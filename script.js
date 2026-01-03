@@ -23,23 +23,13 @@ async function init() {
 
 // إعداد المستمعين
 function setupEventListeners() {
-    // قائمة الموبايل
     const menuBtn = document.getElementById('menuBtn');
     const navLinks = document.getElementById('navLinks');
     
     if (menuBtn && navLinks) {
-        menuBtn.addEventListener('click', () => {
-            navLinks.classList.toggle('active');
-        });
-        
-        document.addEventListener('click', (e) => {
-            if (!menuBtn.contains(e.target) && !navLinks.contains(e.target)) {
-                navLinks.classList.remove('active');
-            }
-        });
+        menuBtn.addEventListener('click', () => navLinks.classList.toggle('active'));
     }
     
-    // التنقل
     document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
@@ -48,35 +38,26 @@ function setupEventListeners() {
         });
     });
     
-    // منصات المتابعين
     document.querySelectorAll('.platform-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            const platform = this.getAttribute('data-platform');
-            changePlatform(platform);
+            changePlatform(this.getAttribute('data-platform'));
         });
     });
 }
 
-// إعداد التنقل
 function setupNavigation() {
     const lastSection = localStorage.getItem('lastSection') || 'home';
     switchSection(lastSection);
 }
 
-// تبديل الأقسام
 function switchSection(sectionId) {
     const navLinks = document.getElementById('navLinks');
     if (navLinks) navLinks.classList.remove('active');
     
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
+    document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     
     const targetSection = document.getElementById(sectionId);
     const targetLink = document.querySelector(`[href="#${sectionId}"]`);
@@ -86,11 +67,6 @@ function switchSection(sectionId) {
         if (targetLink) targetLink.classList.add('active');
         state.currentSection = sectionId;
         localStorage.setItem('lastSection', sectionId);
-        
-        // التمرير للقسم
-        setTimeout(() => {
-            targetSection.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
     }
 }
 
@@ -100,103 +76,72 @@ async function loadAllProducts() {
     
     try {
         // الحسابات
-        const { data: accounts, error: accountsError } = await supabaseClient
-            .from('products')
-            .select('*')
-            .eq('category', 'accounts')
-            .eq('is_active', true);
+        const accountsSnapshot = await firestoreDB.collection('products')
+            .where('category', '==', 'accounts')
+            .where('isActive', '==', true)
+            .get();
         
-        if (accountsError) {
-            console.error('خطأ في الحسابات:', accountsError);
-            state.products.accounts = getSampleAccounts();
-        } else {
-            state.products.accounts = accounts || [];
-        }
-        
+        state.products.accounts = accountsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
         renderAccounts(state.products.accounts);
         
         // القسائم
-        const { data: vouchers, error: vouchersError } = await supabaseClient
-            .from('products')
-            .select('*')
-            .eq('category', 'vouchers')
-            .eq('is_active', true);
+        const vouchersSnapshot = await firestoreDB.collection('products')
+            .where('category', '==', 'vouchers')
+            .where('isActive', '==', true)
+            .get();
         
-        if (vouchersError) {
-            console.error('خطأ في القسائم:', vouchersError);
-            state.products.vouchers = getSampleVouchers();
-        } else {
-            state.products.vouchers = vouchers || [];
-        }
-        
+        state.products.vouchers = vouchersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
         renderVouchers(state.products.vouchers);
         
         // المتابعين
-        const { data: followers, error: followersError } = await supabaseClient
-            .from('products')
-            .select('*')
-            .eq('category', 'followers')
-            .eq('is_active', true);
+        const followersSnapshot = await firestoreDB.collection('products')
+            .where('category', '==', 'followers')
+            .where('isActive', '==', true)
+            .get();
         
-        if (followersError) {
-            console.error('خطأ في المتابعين:', followersError);
-            state.products.followers = getSampleFollowers();
-        } else {
-            state.products.followers = followers || [];
-        }
-        
+        state.products.followers = followersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
         renderPackages(state.products.followers, 'instagram');
         
-        console.log('✅ تم تحميل المنتجات');
-        
     } catch (error) {
-        console.error('خطأ عام في تحميل المنتجات:', error);
+        console.error('خطأ في تحميل المنتجات:', error);
         loadSampleData();
     }
 }
 
-// بيانات تجريبية للطوارئ
-function getSampleAccounts() {
-    return [
-        {
-            id: 'sample1',
-            title: 'حساب فري فاير VIP',
-            description: 'مستوى 70، أسلحة نادرة، 10 سكنات',
-            price: 49.99,
-            level: 70,
-            diamonds: 5000,
-            skins: 10
-        }
-    ];
-}
-
-function getSampleVouchers() {
-    return [
-        {
-            id: 'vsample1',
-            title: '1000 جوهرة فري فاير',
-            price: 9.99,
-            diamonds: 1000
-        }
-    ];
-}
-
-function getSampleFollowers() {
-    return [
-        {
-            id: 'fsample1',
-            title: '1000 متابع انستغرام',
-            price: 19.99,
-            followers_count: 1000,
-            platform: 'instagram'
-        }
-    ];
-}
-
 function loadSampleData() {
-    state.products.accounts = getSampleAccounts();
-    state.products.vouchers = getSampleVouchers();
-    state.products.followers = getSampleFollowers();
+    state.products.accounts = [{
+        id: 'sample1',
+        title: 'حساب فري فاير VIP',
+        description: 'مستوى 70، أسلحة نادرة',
+        price: 49.99,
+        level: 70,
+        diamonds: 5000,
+        images: ['https://via.placeholder.com/300x200/6366f1/ffffff?text=VIP+Account']
+    }];
+    
+    state.products.vouchers = [{
+        id: 'vsample1',
+        title: '1000 جوهرة',
+        price: 9.99,
+        diamonds: 1000
+    }];
+    
+    state.products.followers = [{
+        id: 'fsample1',
+        title: '1000 متابع انستغرام',
+        price: 19.99,
+        followers_count: 1000,
+        platform: 'instagram'
+    }];
     
     renderAccounts(state.products.accounts);
     renderVouchers(state.products.vouchers);
@@ -216,7 +161,6 @@ function renderAccounts(accounts) {
     container.innerHTML = accounts.map(account => `
         <div class="product-card">
             <img src="${account.images && account.images.length > 0 ? account.images[0] : 'https://via.placeholder.com/300x200/6366f1/ffffff?text=Free+Fire'}" 
-                 alt="${account.title}" 
                  class="product-image">
             <div class="product-content">
                 <h3 class="product-title">${account.title}</h3>
@@ -224,7 +168,6 @@ function renderAccounts(accounts) {
                 <div class="product-meta">
                     ${account.level ? `<span><i class="fas fa-level-up-alt"></i> ${account.level}</span>` : ''}
                     ${account.diamonds ? `<span><i class="fas fa-gem"></i> ${account.diamonds}</span>` : ''}
-                    ${account.skins ? `<span><i class="fas fa-tshirt"></i> ${account.skins} سكن</span>` : ''}
                 </div>
                 <div class="product-price">$${account.price}</div>
                 <button class="btn btn-primary" onclick="buyProduct('account', '${account.id}', '${account.title}', ${account.price})">
@@ -269,7 +212,6 @@ function renderPackages(packages, platform) {
     container.innerHTML = filtered.map(pkg => `
         <div class="package-card">
             <h4>${pkg.title}</h4>
-            <p>${pkg.description || 'زيادة متابعين حقيقية'}</p>
             <div class="product-price">$${pkg.price}</div>
             <button class="btn btn-primary" onclick="buyFollowers('${pkg.id}', '${pkg.title}', ${pkg.price}, ${pkg.followers_count}, '${pkg.platform}')">
                 <i class="fas fa-shopping-cart"></i> شراء الآن
@@ -295,7 +237,6 @@ function selectVoucher(voucherId, title, price, diamonds) {
     `;
 }
 
-// تغيير المنصة
 function changePlatform(platform) {
     state.selectedPlatform = platform;
     renderPackages(state.products.followers, platform);
@@ -303,28 +244,13 @@ function changePlatform(platform) {
 
 // شراء منتج
 async function buyProduct(type, productId, productName, price, diamonds = 0) {
-    state.selectedProduct = {
-        type,
-        id: productId,
-        name: productName,
-        price,
-        diamonds
-    };
-    
+    state.selectedProduct = { type, id: productId, name: productName, price, diamonds };
     showPaymentModal();
 }
 
 // شراء متابعين
 async function buyFollowers(packageId, title, price, count, platform) {
-    state.selectedProduct = {
-        type: 'followers',
-        id: packageId,
-        name: title,
-        price,
-        count,
-        platform
-    };
-    
+    state.selectedProduct = { type: 'followers', id: packageId, name: title, price, count, platform };
     showPaymentModal();
 }
 
@@ -348,6 +274,7 @@ function showPaymentModal() {
             <div class="payment-info">
                 <p><strong>المنتج:</strong> ${description}</p>
                 <p><strong>السعر:</strong> $${state.selectedProduct.price}</p>
+                <p><strong>الدفع عبر:</strong> NowPayments</p>
             </div>
             <div class="payment-actions">
                 <button class="btn btn-secondary" onclick="closeModal('paymentModal')">
@@ -370,25 +297,51 @@ async function processPayment() {
         
         closeModal('paymentModal');
         
-        // محاكاة للدفع (ستستبدل بـ NowPayments)
+        // إنشاء طلب
+        const orderId = `ORD-${Date.now()}`;
+        
+        await firestoreDB.collection('orders').add({
+            orderId: orderId,
+            productType: state.selectedProduct.type,
+            productId: state.selectedProduct.id,
+            productName: state.selectedProduct.name,
+            amount: state.selectedProduct.price,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        });
+        
+        // محاكاة الدفع (ستستبدل بـ NowPayments)
         setTimeout(() => {
-            onPaymentSuccess();
-        }, 1500);
+            completePayment(orderId);
+        }, 2000);
         
     } catch (error) {
-        console.error('Payment Error:', error);
+        console.error('خطأ في الدفع:', error);
         alert('خطأ في عملية الدفع');
     }
 }
 
-// عند نجاح الدفع
-function onPaymentSuccess() {
-    if (state.selectedProduct.type === 'account') {
-        showAccountResult();
-    } else if (state.selectedProduct.type === 'voucher') {
-        showVoucherResult();
-    } else if (state.selectedProduct.type === 'followers') {
-        showFollowersForm();
+// إكمال الدفع
+async function completePayment(orderId) {
+    try {
+        // تحديث حالة الطلب
+        const query = await firestoreDB.collection('orders').where('orderId', '==', orderId).get();
+        if (!query.empty) {
+            const doc = query.docs[0];
+            await doc.ref.update({ status: 'completed' });
+        }
+        
+        // عرض النتيجة
+        if (state.selectedProduct.type === 'account') {
+            showAccountResult();
+        } else if (state.selectedProduct.type === 'voucher') {
+            showVoucherResult();
+        } else if (state.selectedProduct.type === 'followers') {
+            showFollowersForm();
+        }
+        
+    } catch (error) {
+        console.error('خطأ في إكمال الدفع:', error);
     }
 }
 
@@ -434,7 +387,7 @@ function showVoucherResult() {
             <div class="success-icon">✅</div>
             <h3>تم الدفع بنجاح!</h3>
             <p>قسيمتك:</p>
-            <div class="voucher-code">${voucherCode}</div>
+            <div class="voucher-code" onclick="copyToClipboard(this)">${voucherCode}</div>
             <button class="btn btn-primary" onclick="copyToClipboard('${voucherCode}')">
                 نسخ القسيمة
             </button>
@@ -455,11 +408,8 @@ function showFollowersForm() {
             <h3>تم الدفع بنجاح!</h3>
             <p>أكمل معلومات الطلب:</p>
             <input type="text" id="profileUrl" placeholder="رابط الحساب" class="modal-input">
-            <textarea id="profileNotes" placeholder="ملاحظات (اختياري)" class="modal-input" rows="3"></textarea>
+            <textarea id="profileNotes" placeholder="ملاحظات" class="modal-input" rows="3"></textarea>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeModal('resultModal')">
-                    إلغاء
-                </button>
                 <button class="btn btn-primary" onclick="submitFollowersOrder()">
                     تأكيد الطلب
                 </button>
@@ -483,14 +433,16 @@ async function submitFollowersOrder() {
     closeModal('resultModal');
 }
 
-// النسخ للحافظة
 function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        alert('تم نسخ القسيمة!');
-    });
+    if (typeof text === 'string') {
+        navigator.clipboard.writeText(text);
+        alert('تم النسخ!');
+    } else if (text.textContent) {
+        navigator.clipboard.writeText(text.textContent);
+        alert('تم النسخ!');
+    }
 }
 
-// إغلاق المودال
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.remove('active');
@@ -507,13 +459,11 @@ function checkAdminStatus() {
     }
 }
 
-// عرض نافذة الأدمن
 function showAdminLogin() {
     const modal = document.getElementById('adminModal');
     if (modal) modal.classList.add('active');
 }
 
-// تسجيل دخول الأدمن
 function loginAdmin() {
     const password = document.getElementById('adminPassword').value;
     
