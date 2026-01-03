@@ -1,72 +1,117 @@
 // حالة التطبيق
 const state = {
     currentSection: 'home',
-    selectedVoucher: null,
-    selectedPackage: null,
+    selectedProduct: null,
+    paymentInProgress: false,
+    adminLoggedIn: false,
     selectedPlatform: 'instagram',
-    adminLoggedIn: false
+    cart: [],
+    products: {
+        accounts: [],
+        vouchers: [],
+        followers: []
+    }
 };
 
 // تهيئة التطبيق
-function init() {
-    loadProducts();
+async function init() {
     setupEventListeners();
-    checkAdminLogin();
+    checkAdminStatus();
+    await loadAllProducts();
+    
+    // تتبع أقسام الموقع
+    trackNavigation();
 }
 
-// تحميل المنتجات (مثال)
-function loadProducts() {
-    // حسابات فري فاير
-    const accounts = [
-        {
-            id: 1,
-            name: 'حساب فري فاير VIP',
-            price: 49.99,
-            image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300&h=200&fit=crop'
-        },
-        {
-            id: 2,
-            name: 'حساب فري فاير برو',
-            price: 29.99,
-            image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w-300&h=200&fit=crop'
+// تحميل جميع المنتجات من Supabase
+async function loadAllProducts() {
+    try {
+        // تحميل الحسابات
+        const { data: accounts, error: accountsError } = await supabaseClient
+            .from('products')
+            .select('*')
+            .eq('category', 'accounts')
+            .eq('is_active', true);
+        
+        if (!accountsError) {
+            state.products.accounts = accounts || [];
+            renderAccounts(accounts);
         }
-    ];
-    
-    // قسائم
-    const vouchers = [
-        { id: 1, name: '1000 جوهرة', price: 9.99, diamonds: 1000 },
-        { id: 2, name: '5000 جوهرة', price: 39.99, diamonds: 5000 }
-    ];
-    
-    // متابعين
-    const packages = [
-        { id: 1, platform: 'instagram', count: 1000, price: 19.99 },
-        { id: 2, platform: 'instagram', count: 5000, price: 79.99 },
-        { id: 3, platform: 'facebook', count: 1000, price: 24.99 }
-    ];
-    
-    renderAccounts(accounts);
-    renderVouchers(vouchers);
-    renderPackages(packages, 'instagram');
+        
+        // تحميل القسائم
+        const { data: vouchers, error: vouchersError } = await supabaseClient
+            .from('products')
+            .select('*')
+            .eq('category', 'vouchers')
+            .eq('is_active', true);
+        
+        if (!vouchersError) {
+            state.products.vouchers = vouchers || [];
+            renderVouchers(vouchers);
+        }
+        
+        // تحميل باقات المتابعين
+        const { data: followers, error: followersError } = await supabaseClient
+            .from('products')
+            .select('*')
+            .eq('category', 'followers')
+            .eq('is_active', true);
+        
+        if (!followersError) {
+            state.products.followers = followers || [];
+            renderPackages(followers, state.selectedPlatform);
+        }
+        
+    } catch (error) {
+        console.error('Error loading products:', error);
+        showError('حدث خطأ في تحميل المنتجات');
+    }
 }
 
 // عرض الحسابات
-function renderAccounts(accounts) {
+async function renderAccounts(accounts) {
     const container = document.getElementById('accountsGrid');
     if (!container) return;
     
-    container.innerHTML = accounts.map(account => `
-        <div class="product-card">
-            <img src="${account.image}" alt="${account.name}" class="product-img">
-            <div class="product-info">
-                <h3 class="product-name">${account.name}</h3>
-                <div class="product-price">${account.price} $</div>
-                <button class="btn primary" onclick="buyProduct('account', ${account.id})">
-                    شراء الآن
-                </button>
+    if (!accounts || accounts.length === 0) {
+        container.innerHTML = '<div class="loading">لا توجد حسابات متاحة حالياً</div>';
+        return;
+    }
+    
+    let html = '';
+    
+    for (const account of accounts) {
+        // تحميل الصور
+        let imagesHtml = '';
+        if (account.images && account.images.length > 0) {
+            imagesHtml = account.images.slice(0, 7).map(img => 
+                `<div class="product-thumb" style="background-image: url('${img}')"></div>`
+            ).join('');
+        }
+        
+        html += `
+            <div class="product-card animate-fade">
+                <div class="product-images">
+                    ${imagesHtml || '<div class="product-img"></div>'}
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">${account.title}</h3>
+                    <p class="product-desc">${account.description || ''}</p>
+                    <div class="product-meta">
+                        <span><i class="fas fa-level-up-alt"></i> ${account.level || 'مستوى 1'}</span>
+                        <span><i class="fas fa-gem"></i> ${account.diamonds || 0}</span>
+                        <span><i class="fas fa-shopping-bag"></i> ${account.skins || 0} سكن</span>
+                    </div>
+                    <div class="product-price">$${account.price || 0}</div>
+                    <button class="btn primary" onclick="buyProduct('account', '${account.id}', '${account.title}', ${account.price})">
+                        <i class="fas fa-shopping-cart"></i> شراء الآن
+                    </button>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }
+    
+    container.innerHTML = html;
 }
 
 // عرض القسائم
@@ -74,10 +119,16 @@ function renderVouchers(vouchers) {
     const container = document.getElementById('vouchersList');
     if (!container) return;
     
+    if (!vouchers || vouchers.length === 0) {
+        container.innerHTML = '<div class="loading">لا توجد قسائم متاحة حالياً</div>';
+        return;
+    }
+    
     container.innerHTML = vouchers.map(voucher => `
-        <div class="voucher-item" onclick="selectVoucher(${voucher.id})">
-            <h4>${voucher.name}</h4>
-            <div class="product-price">${voucher.price} $</div>
+        <div class="voucher-item" onclick="selectVoucher('${voucher.id}', '${voucher.title}', ${voucher.price}, ${voucher.diamonds || 0})">
+            <h4>${voucher.title}</h4>
+            <div class="product-price">$${voucher.price}</div>
+            <p><i class="fas fa-gem"></i> ${voucher.diamonds || 0} جوهرة</p>
         </div>
     `).join('');
 }
@@ -89,12 +140,18 @@ function renderPackages(packages, platform) {
     
     const filtered = packages.filter(pkg => pkg.platform === platform);
     
+    if (!filtered.length) {
+        container.innerHTML = '<div class="loading">لا توجد باقات متاحة لهذه المنصة</div>';
+        return;
+    }
+    
     container.innerHTML = filtered.map(pkg => `
-        <div class="package" onclick="selectPackage(${pkg.id})">
-            <h4>${pkg.count} متابع</h4>
-            <div class="product-price">${pkg.price} $</div>
-            <button class="btn primary" onclick="buyFollowers(${pkg.id})">
-                طلب الآن
+        <div class="package">
+            <h4>${pkg.followers_count} متابع</h4>
+            <p>${pkg.description || 'زيادة متابعين حقيقية'}</p>
+            <div class="product-price">$${pkg.price}</div>
+            <button class="btn primary" onclick="buyFollowers('${pkg.id}', '${pkg.title}', ${pkg.price}, ${pkg.followers_count}, '${pkg.platform}')">
+                <i class="fas fa-shopping-cart"></i> شراء الآن
             </button>
         </div>
     `).join('');
@@ -119,19 +176,14 @@ function setupEventListeners() {
         menuBtn.addEventListener('click', () => {
             navLinks.classList.toggle('active');
         });
-    }
-    
-    // تغيير المنصة
-    document.querySelectorAll('.platform').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.platform').forEach(p => p.classList.remove('active'));
-            this.classList.add('active');
-            const platform = this.getAttribute('data-platform');
-            state.selectedPlatform = platform;
-            // إعادة تحميل الباقات حسب المنصة
-            loadPackagesByPlatform(platform);
+        
+        // إغلاق القائمة عند النقر خارجها
+        document.addEventListener('click', (e) => {
+            if (!menuBtn.contains(e.target) && !navLinks.contains(e.target)) {
+                navLinks.classList.remove('active');
+            }
         });
-    });
+    }
 }
 
 // تبديل الأقسام
@@ -159,149 +211,494 @@ function switchSection(sectionId) {
         if (targetLink) targetLink.classList.add('active');
         state.currentSection = sectionId;
         
-        // التمرير للقسم
-        setTimeout(() => {
-            targetSection.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        // حفظ القسم النشط
+        localStorage.setItem('lastSection', sectionId);
     }
 }
 
-// اختيار قسيمة
-function selectVoucher(voucherId) {
-    state.selectedVoucher = voucherId;
-    
-    // تحديث التحديد
-    document.querySelectorAll('.voucher-item').forEach(item => {
-        item.classList.remove('selected');
-    });
-    
-    const selected = document.querySelector(`.voucher-item:nth-child(${voucherId})`);
-    if (selected) selected.classList.add('selected');
-    
-    // عرض القسيمة
-    showVoucher(voucherId);
+// تتبع التنقل
+function trackNavigation() {
+    const lastSection = localStorage.getItem('lastSection') || 'home';
+    switchSection(lastSection);
 }
 
-// عرض تفاصيل القسيمة
-function showVoucher(voucherId) {
+// اختيار قسيمة
+function selectVoucher(voucherId, title, price, diamonds) {
     const display = document.getElementById('voucherDisplay');
     if (!display) return;
     
     display.innerHTML = `
-        <div>
-            <h3>قسيمة ${voucherId === 1 ? '1000' : '5000'} جوهرة</h3>
-            <div class="voucher-code">FF-${Date.now().toString().slice(-8)}</div>
-            <button class="btn primary" onclick="copyVoucher()">
-                نسخ القسيمة
-            </button>
-            <button class="btn primary" onclick="buyProduct('voucher', ${voucherId})" style="margin-top: 0.5rem;">
-                شراء الآن
+        <div class="voucher-result">
+            <h3>${title}</h3>
+            <p><i class="fas fa-gem"></i> ${diamonds} جوهرة</p>
+            <div class="product-price">$${price}</div>
+            <button class="btn primary" onclick="buyProduct('voucher', '${voucherId}', '${title}', ${price}, ${diamonds})">
+                <i class="fas fa-shopping-cart"></i> شراء الآن
             </button>
         </div>
     `;
-}
-
-// نسخ القسيمة
-function copyVoucher() {
-    const code = document.querySelector('.voucher-code');
-    if (!code) return;
     
-    navigator.clipboard.writeText(code.textContent).then(() => {
-        alert('تم نسخ القسيمة!');
-    });
-}
-
-// اختيار باقة
-function selectPackage(packageId) {
-    state.selectedPackage = packageId;
-    
-    document.querySelectorAll('.package').forEach(pkg => {
-        pkg.classList.remove('selected');
+    // تحديث التحديد في القائمة
+    document.querySelectorAll('.voucher-item').forEach(item => {
+        item.classList.remove('selected');
     });
     
-    const selected = document.querySelector(`.package:nth-child(${packageId})`);
+    const selected = document.querySelector(`.voucher-item[onclick*="${voucherId}"]`);
     if (selected) selected.classList.add('selected');
 }
 
-// شراء متابعين
-function buyFollowers(packageId) {
-    state.selectedPackage = packageId;
-    document.getElementById('orderForm').classList.remove('hidden');
-    document.getElementById('profileUrl').focus();
-}
-
-// تأكيد طلب المتابعين
-function confirmOrder() {
-    const profileUrl = document.getElementById('profileUrl').value.trim();
-    if (!profileUrl) {
-        alert('يرجى إدخال رابط الحساب');
-        return;
-    }
+// تغيير المنصة للمتابعين
+function changePlatform(platform) {
+    state.selectedPlatform = platform;
     
-    alert('تم تأكيد طلبك! سيتم معالجته قريباً.');
-    cancelOrder();
+    // تحديث الأزرار
+    document.querySelectorAll('.platform').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-platform') === platform) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // إعادة تحميل الباقات
+    renderPackages(state.products.followers, platform);
 }
 
-// إلغاء الطلب
-function cancelOrder() {
-    document.getElementById('orderForm').classList.add('hidden');
-    document.getElementById('profileUrl').value = '';
-    state.selectedPackage = null;
-}
-
-// شراء منتج
-function buyProduct(type, productId) {
-    alert(`سيتم توجيهك لصفحة الدفع لشراء ${type === 'account' ? 'حساب' : 'قسيمة'}`);
-}
-
-// تحميل الباقات حسب المنصة
-function loadPackagesByPlatform(platform) {
-    // هذا مثال - سيتم استبداله ببيانات حقيقية
-    const packages = {
-        instagram: [
-            { id: 1, count: 1000, price: 19.99 },
-            { id: 2, count: 5000, price: 79.99 }
-        ],
-        facebook: [
-            { id: 3, count: 1000, price: 24.99 },
-            { id: 4, count: 5000, price: 99.99 }
-        ],
-        tiktok: [
-            { id: 5, count: 1000, price: 29.99 },
-            { id: 6, count: 5000, price: 119.99 }
-        ]
+// شراء منتج (حسابات أو قسائم)
+async function buyProduct(type, productId, productName, price, diamonds = 0) {
+    state.selectedProduct = {
+        type,
+        id: productId,
+        name: productName,
+        price,
+        diamonds
     };
     
-    renderPackages(packages[platform] || [], platform);
+    // عرض نافذة الدفع
+    showPaymentModal(type, productName, price, diamonds);
 }
 
-// التحقق من تسجيل دخول الأدمن
-function checkAdminLogin() {
+// شراء متابعين
+async function buyFollowers(packageId, title, price, count, platform) {
+    state.selectedProduct = {
+        type: 'followers',
+        id: packageId,
+        name: title,
+        price: price,
+        count: count,
+        platform: platform
+    };
+    
+    // عرض نافذة الدفع
+    showPaymentModal('followers', title, price, count);
+}
+
+// عرض نافذة الدفع
+function showPaymentModal(type, productName, price, extraInfo) {
+    const modal = document.getElementById('paymentModal');
+    const content = document.getElementById('paymentContent');
+    
+    let description = productName;
+    if (type === 'voucher' && extraInfo) {
+        description += ` (${extraInfo} جوهرة)`;
+    } else if (type === 'followers' && extraInfo) {
+        description += ` (${extraInfo} متابع)`;
+    }
+    
+    content.innerHTML = `
+        <div class="payment-details">
+            <div class="payment-info">
+                <h4>تفاصيل الشراء:</h4>
+                <div class="info-item">
+                    <span>المنتج:</span>
+                    <span>${description}</span>
+                </div>
+                <div class="info-item">
+                    <span>السعر:</span>
+                    <span class="price">$${price}</span>
+                </div>
+                <div class="info-item">
+                    <span>طريقة الدفع:</span>
+                    <span>NowPayments (عملات رقمية)</span>
+                </div>
+            </div>
+            
+            <div class="payment-notice">
+                <p><i class="fas fa-info-circle"></i> بعد الدفع، سيتم تأكيد طلبك تلقائيًا وتستلم المنتج فورًا.</p>
+            </div>
+            
+            <div class="payment-actions">
+                <button class="btn secondary" onclick="hidePaymentModal()">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+                <button class="btn primary" onclick="processPayment()">
+                    <i class="fas fa-credit-card"></i> المتابعة للدفع
+                </button>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// معالجة الدفع عبر NowPayments
+async function processPayment() {
+    try {
+        if (!state.selectedProduct) return;
+        
+        state.paymentInProgress = true;
+        
+        // إنشاء طلب في قاعدة البيانات
+        const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const { data: order, error: orderError } = await supabaseClient
+            .from('orders')
+            .insert([{
+                order_id: orderId,
+                product_type: state.selectedProduct.type,
+                product_id: state.selectedProduct.id,
+                product_name: state.selectedProduct.name,
+                amount: state.selectedProduct.price,
+                status: 'pending',
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        
+        if (orderError) throw orderError;
+        
+        // إنشاء فاتورة NowPayments
+        const invoiceUrl = await nowpaymentsUtils.createInvoice(
+            state.selectedProduct.price,
+            state.selectedProduct.name,
+            orderId
+        );
+        
+        if (!invoiceUrl) {
+            throw new Error('فشل في إنشاء فاتورة الدفع');
+        }
+        
+        // توجيه المستخدم لصفحة الدفع
+        window.open(invoiceUrl, '_blank');
+        
+        // بدء تتبع حالة الدفع
+        startPaymentTracking(orderId);
+        
+        // إخفاء نافذة الدفع
+        hidePaymentModal();
+        
+    } catch (error) {
+        console.error('Payment error:', error);
+        showError('حدث خطأ في عملية الدفع');
+        state.paymentInProgress = false;
+    }
+}
+
+// تتبع حالة الدفع
+async function startPaymentTracking(orderId) {
+    let attempts = 0;
+    const maxAttempts = 60; // 5 دقائق (كل 5 ثواني)
+    
+    const checkInterval = setInterval(async () => {
+        attempts++;
+        
+        if (attempts > maxAttempts) {
+            clearInterval(checkInterval);
+            showError('انتهت مدة الانتظار للدفع');
+            return;
+        }
+        
+        try {
+            // التحقق من حالة الطلب في قاعدة البيانات
+            const { data: order, error } = await supabaseClient
+                .from('orders')
+                .select('*')
+                .eq('order_id', orderId)
+                .single();
+            
+            if (error) throw error;
+            
+            if (order.status === 'completed') {
+                clearInterval(checkInterval);
+                onPaymentSuccess(order);
+            } else if (order.status === 'failed') {
+                clearInterval(checkInterval);
+                showError('فشل عملية الدفع');
+            }
+            
+        } catch (error) {
+            console.error('Tracking error:', error);
+        }
+    }, 5000); // كل 5 ثواني
+}
+
+// عند نجاح الدفع
+async function onPaymentSuccess(order) {
+    state.paymentInProgress = false;
+    
+    try {
+        // جلب تفاصيل المنتج
+        const { data: product, error: productError } = await supabaseClient
+            .from('products')
+            .select('*')
+            .eq('id', order.product_id)
+            .single();
+        
+        if (productError) throw productError;
+        
+        // عرض النتيجة حسب نوع المنتج
+        if (order.product_type === 'account') {
+            showAccountAfterPayment(product, order);
+        } 
+        else if (order.product_type === 'voucher') {
+            showVoucherAfterPayment(product, order);
+        }
+        else if (order.product_type === 'followers') {
+            showFollowersFormAfterPayment(product, order);
+        }
+        
+    } catch (error) {
+        console.error('Error in payment success:', error);
+        showError('حدث خطأ في معالجة الطلب');
+    }
+}
+
+// عرض بيانات الحساب بعد الدفع
+function showAccountAfterPayment(product, order) {
+    const modal = document.getElementById('resultModal');
+    const content = document.getElementById('resultContent');
+    
+    // توليد بيانات الحساب العشوائية
+    const accountData = {
+        username: `FF_${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+        password: `FF@${Math.floor(Math.random() * 1000000)}`,
+        email: `account.${Math.floor(Math.random() * 1000)}@freefiremail.com`,
+        recovery_code: `RC-${Math.random().toString(36).substr(2, 10).toUpperCase()}`
+    };
+    
+    content.innerHTML = `
+        <div class="success-message">
+            <div class="success-icon">✅</div>
+            <h3>تم الدفع بنجاح!</h3>
+            <p class="success-text">شكرًا لشرائك. إليك بيانات حسابك:</p>
+            
+            <div class="account-data">
+                <div class="data-item">
+                    <strong><i class="fas fa-user"></i> اسم المستخدم:</strong>
+                    <span class="copyable" onclick="copyText(this)">${accountData.username}</span>
+                </div>
+                <div class="data-item">
+                    <strong><i class="fas fa-lock"></i> كلمة المرور:</strong>
+                    <span class="copyable" onclick="copyText(this)">${accountData.password}</span>
+                </div>
+                <div class="data-item">
+                    <strong><i class="fas fa-envelope"></i> البريد الإلكتروني:</strong>
+                    <span class="copyable" onclick="copyText(this)">${accountData.email}</span>
+                </div>
+                <div class="data-item">
+                    <strong><i class="fas fa-key"></i> كود الاسترجاع:</strong>
+                    <span class="copyable" onclick="copyText(this)">${accountData.recovery_code}</span>
+                </div>
+            </div>
+            
+            <div class="warning-box">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>احفظ هذه البيانات في مكان آمن ولا تشاركها مع أحد!</p>
+            </div>
+            
+            <button class="btn primary" onclick="hideResultModal()">
+                <i class="fas fa-check"></i> تم الاستلام
+            </button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// عرض القسيمة بعد الدفع
+function showVoucherAfterPayment(product, order) {
+    const modal = document.getElementById('resultModal');
+    const content = document.getElementById('resultContent');
+    
+    // توليد كود القسيمة
+    const voucherCode = `FF-${Math.random().toString(36).substr(2, 8).toUpperCase()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+    
+    content.innerHTML = `
+        <div class="success-message">
+            <div class="success-icon">✅</div>
+            <h3>تم الدفع بنجاح!</h3>
+            <p class="success-text">شكرًا لشرائك. إليك قسيمتك:</p>
+            
+            <div class="voucher-result">
+                <div class="voucher-code" id="voucherCodeResult" onclick="copyVoucherCode()">
+                    ${voucherCode}
+                </div>
+                <p class="voucher-info"><i class="fas fa-gem"></i> ${product.diamonds || 0} جوهرة</p>
+                
+                <button class="btn primary" onclick="copyVoucherCode()">
+                    <i class="fas fa-copy"></i> نسخ القسيمة
+                </button>
+            </div>
+            
+            <div class="instructions">
+                <h4><i class="fas fa-info-circle"></i> كيفية الاستخدام:</h4>
+                <p>1. افتح لعبة فري فاير</p>
+                <p>2. اذهب إلى قسم شراء الجواهر</p>
+                <p>3. اختر "إدخال كود"</p>
+                <p>4. الصق الكود واضغط تأكيد</p>
+            </div>
+            
+            <button class="btn secondary" onclick="hideResultModal()">
+                إغلاق
+            </button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// عرض نموذج المتابعين بعد الدفع
+function showFollowersFormAfterPayment(product, order) {
+    const modal = document.getElementById('resultModal');
+    const content = document.getElementById('resultContent');
+    
+    content.innerHTML = `
+        <div class="followers-form">
+            <div class="success-icon">✅</div>
+            <h3>تم الدفع بنجاح!</h3>
+            <p class="success-text">الرجاء إكمال معلومات الطلب:</p>
+            
+            <div class="order-summary">
+                <div class="summary-item">
+                    <span>الباقة:</span>
+                    <span>${product.followers_count} متابع</span>
+                </div>
+                <div class="summary-item">
+                    <span>المبلغ:</span>
+                    <span>$${product.price}</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="followersPlatform"><i class="fas fa-globe"></i> اختر المنصة:</label>
+                <select id="followersPlatform" class="input">
+                    <option value="instagram">انستغرام</option>
+                    <option value="facebook">فيسبوك</option>
+                    <option value="tiktok">تيك توك</option>
+                    <option value="twitter">تويتر</option>
+                    <option value="youtube">يوتيوب</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="followersProfile"><i class="fas fa-link"></i> رابط الحساب أو اليوزر:</label>
+                <input type="text" id="followersProfile" 
+                       placeholder="مثال: instagram.com/username أو @username" 
+                       class="input">
+                <small class="hint">تأكد من أن الحساب عام وليس خاص</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="followersNote"><i class="fas fa-sticky-note"></i> ملاحظات إضافية (اختياري):</label>
+                <textarea id="followersNote" 
+                         placeholder="أي تعليمات خاصة بالطلب..." 
+                         class="input" 
+                         rows="3"></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button class="btn secondary" onclick="hideResultModal()">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+                <button class="btn primary" onclick="submitFollowersOrder('${order.order_id}', '${product.id}')">
+                    <i class="fas fa-check"></i> تأكيد الطلب
+                </button>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// إرسال طلب المتابعين
+async function submitFollowersOrder(orderId, productId) {
+    try {
+        const platform = document.getElementById('followersPlatform').value;
+        const profile = document.getElementById('followersProfile').value.trim();
+        const note = document.getElementById('followersNote').value.trim();
+        
+        if (!profile) {
+            showError('الرجاء إدخال رابط الحساب');
+            return;
+        }
+        
+        // تحديث الطلب في قاعدة البيانات
+        const { error } = await supabaseClient
+            .from('orders')
+            .update({
+                platform: platform,
+                profile_url: profile,
+                notes: note,
+                status: 'processing'
+            })
+            .eq('order_id', orderId);
+        
+        if (error) throw error;
+        
+        // تحديث حالة المنتج
+        await supabaseClient
+            .from('products')
+            .update({ stock: supabaseClient.sql`stock - 1` })
+            .eq('id', productId);
+        
+        hideResultModal();
+        
+        // عرض رسالة النجاح
+        setTimeout(() => {
+            alert('✅ تم تأكيد طلبك بنجاح!\n\nسيتم بدء التنفيذ خلال 24 ساعة.\nيمكنك متابعة طلبك من خلال رقم الطلب: ' + orderId);
+        }, 300);
+        
+    } catch (error) {
+        console.error('Error submitting order:', error);
+        showError('حدث خطأ في تأكيد الطلب');
+    }
+}
+
+// نسخ النص
+function copyText(element) {
+    const text = element.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const original = element.textContent;
+        element.textContent = 'تم النسخ!';
+        element.style.color = '#10b981';
+        
+        setTimeout(() => {
+            element.textContent = original;
+            element.style.color = '';
+        }, 2000);
+    });
+}
+
+// نسخ القسيمة
+function copyVoucherCode() {
+    const codeElement = document.getElementById('voucherCodeResult');
+    if (codeElement) {
+        copyText(codeElement);
+    }
+}
+
+// التحقق من حالة الأدمن
+function checkAdminStatus() {
     const token = localStorage.getItem('adminToken');
     if (token === 'Maski2026') {
         state.adminLoggedIn = true;
-        updateAdminButton();
-    }
-}
-
-// تحديث زر الأدمن
-function updateAdminButton() {
-    const adminBtn = document.querySelector('.admin-btn');
-    if (adminBtn && state.adminLoggedIn) {
-        adminBtn.innerHTML = '<i class="fas fa-cog"></i> لوحة التحكم';
-        adminBtn.onclick = () => {
-            window.location.href = 'admin.html';
-        };
+        window.location.href = 'admin.html';
+    } else {
+        showAdminLogin();
     }
 }
 
 // عرض نافذة الأدمن
 function showAdminLogin() {
-    if (state.adminLoggedIn) {
-        window.location.href = 'admin.html';
-        return;
-    }
-    
     document.getElementById('adminModal').classList.add('active');
     document.getElementById('adminPassword').focus();
 }
@@ -320,12 +717,45 @@ function loginAdmin() {
         localStorage.setItem('adminToken', password);
         state.adminLoggedIn = true;
         hideAdminModal();
-        updateAdminButton();
-        alert('تم تسجيل دخول الأدمن بنجاح!');
+        window.location.href = 'admin.html';
     } else {
-        alert('كلمة المرور غير صحيحة!');
+        showError('كلمة المرور غير صحيحة!');
     }
 }
 
-// بدء التطبيق عند تحميل الصفحة
+// إخفاء نافذة الدفع
+function hidePaymentModal() {
+    if (!state.paymentInProgress) {
+        document.getElementById('paymentModal').classList.remove('active');
+    }
+}
+
+// إخفاء نافذة النتائج
+function hideResultModal() {
+    document.getElementById('resultModal').classList.remove('active');
+    state.selectedProduct = null;
+}
+
+// عرض خطأ
+function showError(message) {
+    alert(`❌ ${message}`);
+}
+
+// إخفاء القائمة على الهاتف عند النقر على رابط
+function closeMobileMenu() {
+    const navLinks = document.getElementById('navLinks');
+    if (navLinks && window.innerWidth <= 768) {
+        navLinks.classList.remove('active');
+    }
+}
+
+// بدء التطبيق
 document.addEventListener('DOMContentLoaded', init);
+
+// تصدير الدوال للاستخدام في الملفات الأخرى
+window.appState = state;
+window.utils = {
+    switchSection,
+    showError,
+    copyText
+};
