@@ -1,57 +1,42 @@
-// إعدادات Supabase
-const SUPABASE_URL = 'https://ftgjqvoiunulricuetmb.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm';
+// إعدادات Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBTZscf5MK2oIIirhAJ9PgzgYd5Yo9-O6E",
+    authDomain: "mas-ki-stor.firebaseapp.com",
+    projectId: "mas-ki-stor",
+    storageBucket: "mas-ki-stor.firebasestorage.app",
+    messagingSenderId: "210520044834",
+    appId: "1:210520044834:web:2b42387c47e47b2186617b"
+};
 
-// تهيئة Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// تهيئة Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const storage = firebase.storage();
 
-// إعدادات NowPayments
-const NOWPAYMENTS_API_KEY = 'your-api-key-here'; // ضعه لاحقًا
-const NOWPAYMENTS_URL = 'https://api.nowpayments.io/v1';
+// NowPayments API (ضع مفتاحك هنا لاحقًا)
+const NOWPAYMENTS_API_KEY = 'YOUR_API_KEY_HERE';
 
 // دالة لتحميل الصور
 async function loadImageFromStorage(path) {
     try {
-        const { data } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(path);
-        return data?.publicUrl || null;
+        const url = await storage.ref(path).getDownloadURL();
+        return url;
     } catch (error) {
-        console.log('خطأ في تحميل الصورة:', error);
-        return null;
+        return 'https://via.placeholder.com/300x200/6366f1/ffffff?text=MAS+Ki+stor';
     }
 }
 
 // دالة لرفع الصور
 async function uploadImageToStorage(file) {
     try {
-        if (!file) return null;
-        
-        const fileName = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const filePath = `${fileName}`;
-        
-        const { data, error } = await supabase.storage
-            .from('product-images')
-            .upload(filePath, file, {
-                cacheControl: '3600',
-                upsert: false
-            });
-        
-        if (error) {
-            console.log('خطأ في رفع الصورة:', error);
-            
-            // محاولة باسم آخر
-            const newFileName = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            return uploadImageToStorage(file, newFileName);
-        }
-        
-        const { data: urlData } = supabase.storage
-            .from('product-images')
-            .getPublicUrl(filePath);
-        
-        return urlData?.publicUrl || null;
+        const fileName = `products/${Date.now()}_${file.name}`;
+        const storageRef = storage.ref(fileName);
+        await storageRef.put(file);
+        const url = await storageRef.getDownloadURL();
+        return url;
     } catch (error) {
-        console.log('خطأ غير متوقع في رفع الصورة:', error);
+        console.log('خطأ في رفع الصورة:', error);
         return null;
     }
 }
@@ -59,14 +44,10 @@ async function uploadImageToStorage(file) {
 // NowPayments وظائف
 async function createNowPaymentsInvoice(amount, productName, orderId) {
     try {
-        // سيتم تفعيل هذا لاحقًا
-        console.log('NowPayments Invoice Request:', {
-            amount,
-            productName,
-            orderId
-        });
+        // محاكاة للاختبار
+        console.log('NowPayments Invoice:', { amount, productName, orderId });
         
-        // رابط تجريبي للاختبار
+        // رابط تجريبي (استبدله بالرابط الحقيقي)
         return `https://nowpayments.io/payment/?amount=${amount}&description=${encodeURIComponent(productName)}&orderId=${orderId}`;
     } catch (error) {
         console.error('NowPayments Error:', error);
@@ -74,24 +55,28 @@ async function createNowPaymentsInvoice(amount, productName, orderId) {
     }
 }
 
+// التحقق من حالة الدفع
 async function checkPaymentStatus(paymentId) {
     try {
-        // محاكاة لحالة الدفع
-        return 'completed'; // أو 'pending', 'failed'
+        // محاكاة للاختبار
+        return 'completed';
     } catch (error) {
-        console.error('Payment Status Error:', error);
         return 'failed';
     }
 }
 
 // تصدير
-window.supabaseClient = supabase;
-window.supabaseUtils = {
-    loadImage: loadImageFromStorage,
-    uploadImage: uploadImageToStorage
-};
+window.firebaseApp = app;
+window.firestoreDB = db;
+window.firebaseAuth = auth;
+window.firebaseStorage = storage;
 
 window.nowpaymentsUtils = {
     createInvoice: createNowPaymentsInvoice,
     checkStatus: checkPaymentStatus
+};
+
+window.firebaseUtils = {
+    loadImage: loadImageFromStorage,
+    uploadImage: uploadImageToStorage
 };
