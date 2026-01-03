@@ -6,6 +6,13 @@
     <title>MAS Ki stor | متجر إلكتروني</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <!-- NowPayments -->
+    <script src="https://nowpayments.io/assets/nowpayments.js"></script>
 </head>
 <body>
     <!-- شريط التنقل -->
@@ -44,8 +51,7 @@
     <!-- إعلانات A-ads -->
     <div class="a-ads-section">
         <div class="container">
-            <div class="a-ads-box">
-                <!-- مكان كود A-ads -->
+            <div class="a-ads-box" id="aAdsBox">
                 <div class="a-ads-placeholder">
                     <i class="fas fa-ad"></i>
                     <p>إعلانات A-ads</p>
@@ -162,7 +168,7 @@
                     <button class="btn btn-primary" onclick="loginAdmin()">دخول</button>
                     <button class="btn btn-secondary" onclick="closeModal('adminModal')">إلغاء</button>
                 </div>
-                <p class="modal-note">كلمة المرور الافتراضية: Maski2026</p>
+                <p class="modal-note">كلمة المرور: Maski2026</p>
             </div>
         </div>
     </div>
@@ -199,36 +205,19 @@
                 </div>
                 <div class="footer-section">
                     <h3>الدعم</h3>
-                    <p>البريد: support@maskistore.com</p>
-                    <p>التواصل: @maskistore</p>
+                    <p>support@maskistore.com</p>
+                    <p>@maskistore</p>
                 </div>
                 <div class="footer-section">
                     <h3>الدفع الآمن</h3>
                     <p>مدعوم من NowPayments</p>
                 </div>
             </div>
-            <p class="copyright">© 2024 MAS Ki stor. جميع الحقوق محفوظة</p>
+            <p class="copyright">© 2024 MAS Ki stor</p>
         </div>
     </footer>
 
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
     <script src="script.js"></script>
-    
-    <script>
-        // إعلانات A-ads (ضع الكود الحقيقي هنا)
-        document.addEventListener('DOMContentLoaded', function() {
-            const aadsPlaceholder = document.querySelector('.a-ads-placeholder');
-            if (aadsPlaceholder) {
-                // كود A-ads الفعلي يذهب هنا
-                aadsPlaceholder.innerHTML = `
-                    <div style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                        <small>إعلانات A-ads - أضف كودك هنا</small>
-                    </div>
-                `;
-            }
-        });
-    </script>
 </body>
     </html>
