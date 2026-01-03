@@ -6,6 +6,85 @@
     <title>لوحة تحكم MAS Ki stor</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .admin-styles {
+            .upload-area {
+                border: 3px dashed #4f46e5;
+                border-radius: 15px;
+                padding: 3rem;
+                text-align: center;
+                background: rgba(79, 70, 229, 0.05);
+                margin: 1.5rem 0;
+                cursor: pointer;
+                transition: all 0.3s;
+            }
+            .upload-area:hover {
+                background: rgba(79, 70, 229, 0.1);
+                border-color: #f59e0b;
+            }
+            .upload-area i {
+                font-size: 3rem;
+                color: #4f46e5;
+                margin-bottom: 1rem;
+            }
+            .images-preview {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 1rem;
+                margin: 1rem 0;
+            }
+            .image-preview {
+                position: relative;
+                width: 100px;
+                height: 100px;
+                border-radius: 10px;
+                overflow: hidden;
+                border: 2px solid #374151;
+            }
+            .image-preview img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .remove-image {
+                position: absolute;
+                top: 5px;
+                left: 5px;
+                background: #ef4444;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 25px;
+                height: 25px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.8rem;
+            }
+            .image-counter {
+                position: absolute;
+                bottom: 5px;
+                right: 5px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 0.8rem;
+            }
+            .image-limit {
+                color: #ef4444;
+                font-size: 0.9rem;
+                margin-top: 0.5rem;
+            }
+            .product-images-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 1rem;
+                margin: 1rem 0;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- شريط التحكم -->
@@ -15,9 +94,14 @@
                 <div class="logo-icon">⚙️</div>
                 <h1>لوحة <span class="highlight">التحكم</span></h1>
             </div>
-            <button class="admin-btn" onclick="logoutAdmin()">
-                <i class="fas fa-sign-out-alt"></i> خروج
-            </button>
+            <div class="nav-links">
+                <button class="btn primary" onclick="window.location.href='index.html'">
+                    <i class="fas fa-store"></i> العودة للمتجر
+                </button>
+                <button class="admin-btn" onclick="logoutAdmin()">
+                    <i class="fas fa-sign-out-alt"></i> خروج
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -27,205 +111,244 @@
             <!-- إحصائيات سريعة -->
             <div class="stats">
                 <div class="stat-card">
-                    <h3>المبيعات</h3>
-                    <p class="stat-number">$5,430</p>
+                    <h3><i class="fas fa-money-bill-wave"></i> إجمالي المبيعات</h3>
+                    <p class="stat-number" id="totalSales">$0</p>
                 </div>
                 <div class="stat-card">
-                    <h3>الطلبات</h3>
-                    <p class="stat-number">24</p>
+                    <h3><i class="fas fa-shopping-cart"></i> الطلبات النشطة</h3>
+                    <p class="stat-number" id="activeOrders">0</p>
                 </div>
                 <div class="stat-card">
-                    <h3>العملاء</h3>
-                    <p class="stat-number">156</p>
+                    <h3><i class="fas fa-box"></i> المنتجات</h3>
+                    <p class="stat-number" id="totalProducts">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3><i class="fas fa-users"></i> طلبات المتابعين</h3>
+                    <p class="stat-number" id="pendingFollowers">0</p>
                 </div>
             </div>
 
-            <!-- إدارة المنتجات -->
-            <section class="admin-section">
+            <!-- تبويبات الإدارة -->
+            <div class="admin-tabs">
+                <button class="tab-btn active" onclick="showTab('products')">
+                    <i class="fas fa-box"></i> المنتجات
+                </button>
+                <button class="tab-btn" onclick="showTab('orders')">
+                    <i class="fas fa-shopping-cart"></i> الطلبات
+                </button>
+                <button class="tab-btn" onclick="showTab('vouchers')">
+                    <i class="fas fa-gift"></i> القسائم
+                </button>
+                <button class="tab-btn" onclick="showTab('followers')">
+                    <i class="fas fa-users"></i> متابعين
+                </button>
+                <button class="tab-btn" onclick="showTab('settings')">
+                    <i class="fas fa-cog"></i> الإعدادات
+                </button>
+            </div>
+
+            <!-- قسم إدارة المنتجات -->
+            <section id="productsTab" class="admin-tab active">
                 <h2 class="section-title">
-                    <i class="fas fa-box"></i> إدارة المنتجات
+                    <i class="fas fa-box"></i> إدارة المنتجات (حسابات فري فاير)
                 </h2>
                 
-                <div class="product-form">
-                    <h3>إضافة منتج جديد</h3>
-                    <input type="text" id="productTitle" placeholder="اسم المنتج" class="input">
-                    <textarea id="productDesc" placeholder="الوصف" class="input"></textarea>
-                    <input type="number" id="productPrice" placeholder="السعر $" class="input">
-                    <select id="productCategory" class="input">
-                        <option value="accounts">حسابات فري فاير</option>
-                        <option value="vouchers">قسائم جواهر</option>
-                        <option value="followers">متابعين</option>
-                    </select>
-                    <button class="btn primary" onclick="addProduct()">
-                        <i class="fas fa-plus"></i> إضافة
+                <div class="admin-card">
+                    <h3><i class="fas fa-plus"></i> إضافة منتج جديد</h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>عنوان المنتج:</label>
+                            <input type="text" id="productTitle" class="input" placeholder="مثال: حساب فري فاير VIP">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>السعر ($):</label>
+                            <input type="number" id="productPrice" class="input" placeholder="49.99" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>الكمية:</label>
+                            <input type="number" id="productStock" class="input" placeholder="10" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>المستوى:</label>
+                            <input type="number" id="productLevel" class="input" placeholder="70" min="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>عدد الجواهر:</label>
+                            <input type="number" id="productDiamonds" class="input" placeholder="1000" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>عدد السكنات:</label>
+                            <input type="number" id="productSkins" class="input" placeholder="5" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>الوصف:</label>
+                        <textarea id="productDescription" class="input" rows="4" placeholder="وصف مفصل عن الحساب..."></textarea>
+                    </div>
+                    
+                    <!-- رفع الصور -->
+                    <div class="form-group">
+                        <label>صور المنتج (حد أقصى 7 صور):</label>
+                        <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageUpload').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <h4>انقر لرفع الصور</h4>
+                            <p>اسحب وأفلت أو انقر لاختيار الصور</p>
+                            <p class="image-limit">الحد الأقصى: 7 صور - الصيغ المدعومة: JPG, PNG, WebP</p>
+                        </div>
+                        
+                        <input type="file" id="imageUpload" multiple accept="image/*" style="display: none;" onchange="handleImageUpload(this.files)">
+                        
+                        <div class="images-preview" id="imagesPreview">
+                            <!-- الصور المرفوعة تظهر هنا -->
+                        </div>
+                    </div>
+                    
+                    <button class="btn primary" onclick="addProduct()" id="addProductBtn">
+                        <i class="fas fa-plus"></i> إضافة المنتج
                     </button>
                 </div>
-            </section>
-
-            <!-- الطلبات -->
-            <section class="admin-section">
-                <h2 class="section-title">
-                    <i class="fas fa-shopping-cart"></i> الطلبات الحالية
-                </h2>
                 
-                <div class="orders-list" id="ordersList">
-                    <!-- سيتم تحميل الطلبات -->
+                <!-- قائمة المنتجات -->
+                <div class="admin-card">
+                    <h3><i class="fas fa-list"></i> المنتجات الحالية</h3>
+                    <div class="products-list" id="productsList">
+                        <div class="loading">جاري تحميل المنتجات...</div>
+                    </div>
                 </div>
             </section>
 
-            <!-- الإعدادات -->
-            <section class="admin-section">
+            <!-- قسم الطلبات -->
+            <section id="ordersTab" class="admin-tab">
                 <h2 class="section-title">
-                    <i class="fas fa-cog"></i> الإعدادات
+                    <i class="fas fa-shopping-cart"></i> إدارة الطلبات
                 </h2>
                 
-                <div class="settings">
-                    <div class="setting">
-                        <h3>كلمة مرور الأدمن</h3>
-                        <input type="password" id="newPassword" placeholder="كلمة مرور جديدة" class="input">
-                        <button class="btn primary" onclick="changePassword()">تغيير</button>
+                <div class="admin-card">
+                    <div class="orders-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>رقم الطلب</th>
+                                    <th>المنتج</th>
+                                    <th>المبلغ</th>
+                                    <th>الحالة</th>
+                                    <th>التاريخ</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTable">
+                                <!-- الطلبات تظهر هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- قسم القسائم -->
+            <section id="vouchersTab" class="admin-tab">
+                <h2 class="section-title">
+                    <i class="fas fa-gift"></i> إدارة القسائم
+                </h2>
+                
+                <div class="admin-card">
+                    <h3>إضافة قسيمة جديدة</h3>
+                    <div class="form-grid">
+                        <input type="text" id="voucherTitle" class="input" placeholder="عنوان القسيمة">
+                        <input type="number" id="voucherDiamonds" class="input" placeholder="عدد الجواهر">
+                        <input type="number" id="voucherPrice" class="input" placeholder="السعر">
+                        <input type="number" id="voucherStock" class="input" placeholder="الكمية">
+                    </div>
+                    <button class="btn primary" onclick="addVoucher()">إضافة قسيمة</button>
+                </div>
+                
+                <div class="admin-card">
+                    <h3>القسائم الحالية</h3>
+                    <div id="vouchersList"></div>
+                </div>
+            </section>
+
+            <!-- قسم المتابعين -->
+            <section id="followersTab" class="admin-tab">
+                <h2 class="section-title">
+                    <i class="fas fa-users"></i> طلبات المتابعين
+                </h2>
+                
+                <div class="admin-card">
+                    <h3>إضافة باقة متابعين</h3>
+                    <div class="form-grid">
+                        <input type="number" id="followersCount" class="input" placeholder="عدد المتابعين">
+                        <select id="followersPlatform" class="input">
+                            <option value="instagram">انستغرام</option>
+                            <option value="facebook">فيسبوك</option>
+                            <option value="tiktok">تيك توك</option>
+                        </select>
+                        <input type="number" id="followersPrice" class="input" placeholder="السعر">
+                        <input type="number" id="followersStock" class="input" placeholder="الكمية">
+                    </div>
+                    <button class="btn primary" onclick="addFollowersPackage()">إضافة باقة</button>
+                </div>
+                
+                <div class="admin-card">
+                    <h3>طلبات المتابعين المعلقة</h3>
+                    <div id="followersOrders"></div>
+                </div>
+            </section>
+
+            <!-- قسم الإعدادات -->
+            <section id="settingsTab" class="admin-tab">
+                <h2 class="section-title">
+                    <i class="fas fa-cog"></i> إعدادات المتجر
+                </h2>
+                
+                <div class="settings-grid">
+                    <div class="setting-card">
+                        <h3><i class="fas fa-lock"></i> الأمان</h3>
+                        <div class="form-group">
+                            <label>كلمة مرور الأدمن الجديدة:</label>
+                            <input type="password" id="newAdminPassword" class="input">
+                        </div>
+                        <button class="btn primary" onclick="changeAdminPassword()">تغيير كلمة المرور</button>
+                    </div>
+                    
+                    <div class="setting-card">
+                        <h3><i class="fas fa-ad"></i> إعلانات A-ads</h3>
+                        <div class="form-group">
+                            <label>كود A-ads:</label>
+                            <textarea id="aadsCode" class="input" rows="4" placeholder="أدخل كود الإعلان هنا"></textarea>
+                        </div>
+                        <button class="btn primary">حفظ</button>
+                    </div>
+                    
+                    <div class="setting-card">
+                        <h3><i class="fas fa-wallet"></i> NowPayments</h3>
+                        <div class="form-group">
+                            <label>مفتاح API:</label>
+                            <input type="text" id="nowpaymentsApiKey" class="input" placeholder="أدخل مفتاح NowPayments">
+                        </div>
+                        <button class="btn primary">حفظ</button>
                     </div>
                 </div>
             </section>
         </div>
     </main>
 
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="admin-script.js"></script>
+    
     <script>
         // التحقق من تسجيل الدخول
         if (localStorage.getItem('adminToken') !== 'Maski2026') {
             window.location.href = 'index.html';
         }
-
-        // دوال الأدمن
-        function logoutAdmin() {
-            localStorage.removeItem('adminToken');
-            window.location.href = 'index.html';
-        }
-
-        function addProduct() {
-            const title = document.getElementById('productTitle').value;
-            const price = document.getElementById('productPrice').value;
-            
-            if (!title || !price) {
-                alert('يرجى ملء الحقول المطلوبة');
-                return;
-            }
-            
-            alert('تم إضافة المنتج بنجاح!');
-            document.getElementById('productTitle').value = '';
-            document.getElementById('productDesc').value = '';
-            document.getElementById('productPrice').value = '';
-        }
-
-        function changePassword() {
-            const newPass = document.getElementById('newPassword').value;
-            if (newPass.length < 6) {
-                alert('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-                return;
-            }
-            
-            localStorage.setItem('adminToken', newPass);
-            alert('تم تغيير كلمة المرور بنجاح!');
-            document.getElementById('newPassword').value = '';
-        }
-
-        // تحميل الطلبات
-        function loadOrders() {
-            const orders = [
-                { id: 'ORD-001', product: 'حساب VIP', status: 'مكتمل' },
-                { id: 'ORD-002', product: '1000 جوهرة', status: 'قيد الانتظار' }
-            ];
-            
-            const container = document.getElementById('ordersList');
-            if (container) {
-                container.innerHTML = orders.map(order => `
-                    <div class="order-item">
-                        <h4>${order.product}</h4>
-                        <p>رقم الطلب: ${order.id}</p>
-                        <span class="status ${order.status === 'مكتمل' ? 'success' : 'pending'}">
-                            ${order.status}
-                        </span>
-                    </div>
-                `).join('');
-            }
-        }
-
-        // بدء التحميل
-        document.addEventListener('DOMContentLoaded', loadOrders);
-
-        // إضافة CSS للأدمن
-        const style = document.createElement('style');
-        style.textContent = `
-            .stats {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-            
-            .stat-card {
-                background: rgba(30, 41, 59, 0.8);
-                padding: 1.5rem;
-                border-radius: 12px;
-                text-align: center;
-            }
-            
-            .stat-number {
-                font-size: 2rem;
-                font-weight: 700;
-                color: var(--secondary);
-                margin-top: 0.5rem;
-            }
-            
-            .product-form {
-                background: rgba(30, 41, 59, 0.8);
-                padding: 1.5rem;
-                border-radius: 12px;
-                margin-bottom: 2rem;
-            }
-            
-            .orders-list {
-                display: grid;
-                gap: 1rem;
-            }
-            
-            .order-item {
-                background: rgba(30, 41, 59, 0.8);
-                padding: 1rem;
-                border-radius: 10px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            
-            .status {
-                padding: 0.25rem 0.75rem;
-                border-radius: 20px;
-                font-size: 0.9rem;
-            }
-            
-            .status.success {
-                background: rgba(16, 185, 129, 0.2);
-                color: var(--accent);
-            }
-            
-            .status.pending {
-                background: rgba(245, 158, 11, 0.2);
-                color: var(--secondary);
-            }
-            
-            .settings {
-                display: grid;
-                gap: 1.5rem;
-            }
-            
-            .setting {
-                background: rgba(30, 41, 59, 0.8);
-                padding: 1.5rem;
-                border-radius: 12px;
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </body>
-                </html>
+                    </html>
