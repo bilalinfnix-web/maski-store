@@ -7,82 +7,216 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .admin-styles {
-            .upload-area {
-                border: 3px dashed #4f46e5;
-                border-radius: 15px;
-                padding: 3rem;
-                text-align: center;
-                background: rgba(79, 70, 229, 0.05);
-                margin: 1.5rem 0;
-                cursor: pointer;
-                transition: all 0.3s;
-            }
-            .upload-area:hover {
-                background: rgba(79, 70, 229, 0.1);
-                border-color: #f59e0b;
-            }
-            .upload-area i {
-                font-size: 3rem;
-                color: #4f46e5;
-                margin-bottom: 1rem;
-            }
-            .images-preview {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-                gap: 1rem;
-                margin: 1rem 0;
-            }
-            .image-preview {
-                position: relative;
-                width: 100px;
-                height: 100px;
-                border-radius: 10px;
-                overflow: hidden;
-                border: 2px solid #374151;
-            }
-            .image-preview img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-            }
-            .remove-image {
-                position: absolute;
-                top: 5px;
-                left: 5px;
-                background: #ef4444;
-                color: white;
-                border: none;
-                border-radius: 50%;
-                width: 25px;
-                height: 25px;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 0.8rem;
-            }
-            .image-counter {
-                position: absolute;
-                bottom: 5px;
-                right: 5px;
-                background: rgba(0,0,0,0.7);
-                color: white;
-                padding: 2px 8px;
-                border-radius: 10px;
-                font-size: 0.8rem;
-            }
-            .image-limit {
-                color: #ef4444;
-                font-size: 0.9rem;
-                margin-top: 0.5rem;
-            }
-            .product-images-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 1rem;
-                margin: 1rem 0;
-            }
+        /* إضافات خاصة بالأدمن */
+        .admin-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            border-bottom: 2px solid #374151;
+            padding-bottom: 1rem;
+        }
+        
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .tab-btn.active {
+            background: #4f46e5;
+            color: white;
+        }
+        
+        .admin-section {
+            display: none;
+        }
+        
+        .admin-section.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        
+        .admin-card {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .admin-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .admin-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+        
+        .admin-btn-small {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .admin-btn-danger {
+            background: #ef4444;
+        }
+        
+        .admin-btn-success {
+            background: #10b981;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #f59e0b;
+            margin-top: 0.5rem;
+        }
+        
+        .products-list {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .product-item {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .product-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .orders-table th {
+            background: rgba(79, 70, 229, 0.3);
+            padding: 1rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .orders-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        
+        .status-completed {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .upload-area {
+            border: 3px dashed #4f46e5;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            background: rgba(79, 70, 229, 0.05);
+            margin: 1rem 0;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            background: rgba(79, 70, 229, 0.1);
+        }
+        
+        .images-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .image-preview {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .remove-image {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -95,7 +229,7 @@
                 <h1>لوحة <span class="highlight">التحكم</span></h1>
             </div>
             <div class="nav-links">
-                <button class="btn primary" onclick="window.location.href='index.html'">
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">
                     <i class="fas fa-store"></i> العودة للمتجر
                 </button>
                 <button class="admin-btn" onclick="logoutAdmin()">
@@ -108,27 +242,27 @@
     <!-- المحتوى الرئيسي -->
     <main class="main-content">
         <div class="container">
-            <!-- إحصائيات سريعة -->
-            <div class="stats">
+            <!-- الإحصائيات -->
+            <div class="stats-grid">
                 <div class="stat-card">
-                    <h3><i class="fas fa-money-bill-wave"></i> إجمالي المبيعات</h3>
+                    <h3><i class="fas fa-money-bill-wave"></i> المبيعات</h3>
                     <p class="stat-number" id="totalSales">$0</p>
                 </div>
                 <div class="stat-card">
-                    <h3><i class="fas fa-shopping-cart"></i> الطلبات النشطة</h3>
-                    <p class="stat-number" id="activeOrders">0</p>
+                    <h3><i class="fas fa-shopping-cart"></i> الطلبات</h3>
+                    <p class="stat-number" id="totalOrders">0</p>
                 </div>
                 <div class="stat-card">
                     <h3><i class="fas fa-box"></i> المنتجات</h3>
                     <p class="stat-number" id="totalProducts">0</p>
                 </div>
                 <div class="stat-card">
-                    <h3><i class="fas fa-users"></i> طلبات المتابعين</h3>
-                    <p class="stat-number" id="pendingFollowers">0</p>
+                    <h3><i class="fas fa-users"></i> المتابعين</h3>
+                    <p class="stat-number" id="totalFollowers">0</p>
                 </div>
             </div>
 
-            <!-- تبويبات الإدارة -->
+            <!-- تبويبات -->
             <div class="admin-tabs">
                 <button class="tab-btn active" onclick="showTab('products')">
                     <i class="fas fa-box"></i> المنتجات
@@ -147,70 +281,93 @@
                 </button>
             </div>
 
-            <!-- قسم إدارة المنتجات -->
-            <section id="productsTab" class="admin-tab active">
+            <!-- قسم المنتجات -->
+            <section id="productsSection" class="admin-section active">
                 <h2 class="section-title">
-                    <i class="fas fa-box"></i> إدارة المنتجات (حسابات فري فاير)
+                    <i class="fas fa-box"></i> إدارة المنتجات
                 </h2>
                 
+                <!-- نموذج إضافة منتج -->
                 <div class="admin-card">
                     <h3><i class="fas fa-plus"></i> إضافة منتج جديد</h3>
                     
                     <div class="form-grid">
-                        <div class="form-group">
+                        <div>
                             <label>عنوان المنتج:</label>
-                            <input type="text" id="productTitle" class="input" placeholder="مثال: حساب فري فاير VIP">
+                            <input type="text" id="productTitle" class="admin-input" placeholder="اسم المنتج" required>
                         </div>
                         
-                        <div class="form-group">
+                        <div>
                             <label>السعر ($):</label>
-                            <input type="number" id="productPrice" class="input" placeholder="49.99" step="0.01" min="0">
+                            <input type="number" id="productPrice" class="admin-input" placeholder="0.00" step="0.01" required>
                         </div>
                         
-                        <div class="form-group">
+                        <div>
                             <label>الكمية:</label>
-                            <input type="number" id="productStock" class="input" placeholder="10" min="0">
+                            <input type="number" id="productStock" class="admin-input" placeholder="10" min="1">
                         </div>
                         
-                        <div class="form-group">
+                        <div>
                             <label>المستوى:</label>
-                            <input type="number" id="productLevel" class="input" placeholder="70" min="1">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>عدد الجواهر:</label>
-                            <input type="number" id="productDiamonds" class="input" placeholder="1000" min="0">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>عدد السكنات:</label>
-                            <input type="number" id="productSkins" class="input" placeholder="5" min="0">
+                            <input type="number" id="productLevel" class="admin-input" placeholder="1" min="1">
                         </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-grid">
+                        <div>
+                            <label>الجواهر:</label>
+                            <input type="number" id="productDiamonds" class="admin-input" placeholder="0" min="0">
+                        </div>
+                        
+                        <div>
+                            <label>السكنات:</label>
+                            <input type="number" id="productSkins" class="admin-input" placeholder="0" min="0">
+                        </div>
+                        
+                        <div>
+                            <label>التصنيف:</label>
+                            <select id="productCategory" class="admin-input">
+                                <option value="accounts">حسابات فري فاير</option>
+                                <option value="vouchers">قسائم جواهر</option>
+                                <option value="followers">متابعين</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label>المنصة:</label>
+                            <select id="productPlatform" class="admin-input">
+                                <option value="">لا ينطبق</option>
+                                <option value="instagram">انستغرام</option>
+                                <option value="facebook">فيسبوك</option>
+                                <option value="tiktok">تيك توك</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="margin: 1rem 0;">
                         <label>الوصف:</label>
-                        <textarea id="productDescription" class="input" rows="4" placeholder="وصف مفصل عن الحساب..."></textarea>
+                        <textarea id="productDescription" class="admin-input" rows="3" placeholder="وصف المنتج..."></textarea>
                     </div>
                     
                     <!-- رفع الصور -->
-                    <div class="form-group">
+                    <div style="margin: 1.5rem 0;">
                         <label>صور المنتج (حد أقصى 7 صور):</label>
-                        <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageUpload').click()">
-                            <i class="fas fa-cloud-upload-alt"></i>
+                        <div class="upload-area" onclick="document.getElementById('imageUpload').click()">
+                            <i class="fas fa-cloud-upload-alt fa-2x"></i>
                             <h4>انقر لرفع الصور</h4>
                             <p>اسحب وأفلت أو انقر لاختيار الصور</p>
-                            <p class="image-limit">الحد الأقصى: 7 صور - الصيغ المدعومة: JPG, PNG, WebP</p>
+                            <small style="color: #94a3b8;">الصيغ المدعومة: JPG, PNG, WebP</small>
                         </div>
                         
-                        <input type="file" id="imageUpload" multiple accept="image/*" style="display: none;" onchange="handleImageUpload(this.files)">
+                        <input type="file" id="imageUpload" multiple accept="image/*" style="display: none;" 
+                               onchange="handleImageUpload(this.files)">
                         
                         <div class="images-preview" id="imagesPreview">
-                            <!-- الصور المرفوعة تظهر هنا -->
+                            <!-- الصور المرفوعة -->
                         </div>
                     </div>
                     
-                    <button class="btn primary" onclick="addProduct()" id="addProductBtn">
+                    <button class="btn btn-primary" onclick="addProduct()" style="width: 100%;">
                         <i class="fas fa-plus"></i> إضافة المنتج
                     </button>
                 </div>
@@ -225,14 +382,14 @@
             </section>
 
             <!-- قسم الطلبات -->
-            <section id="ordersTab" class="admin-tab">
+            <section id="ordersSection" class="admin-section">
                 <h2 class="section-title">
                     <i class="fas fa-shopping-cart"></i> إدارة الطلبات
                 </h2>
                 
                 <div class="admin-card">
-                    <div class="orders-table">
-                        <table>
+                    <div class="table-responsive">
+                        <table class="orders-table">
                             <thead>
                                 <tr>
                                     <th>رقم الطلب</th>
@@ -244,7 +401,9 @@
                                 </tr>
                             </thead>
                             <tbody id="ordersTable">
-                                <!-- الطلبات تظهر هنا -->
+                                <tr>
+                                    <td colspan="6" class="text-center">جاري تحميل الطلبات...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -252,7 +411,7 @@
             </section>
 
             <!-- قسم القسائم -->
-            <section id="vouchersTab" class="admin-tab">
+            <section id="vouchersSection" class="admin-section">
                 <h2 class="section-title">
                     <i class="fas fa-gift"></i> إدارة القسائم
                 </h2>
@@ -260,79 +419,67 @@
                 <div class="admin-card">
                     <h3>إضافة قسيمة جديدة</h3>
                     <div class="form-grid">
-                        <input type="text" id="voucherTitle" class="input" placeholder="عنوان القسيمة">
-                        <input type="number" id="voucherDiamonds" class="input" placeholder="عدد الجواهر">
-                        <input type="number" id="voucherPrice" class="input" placeholder="السعر">
-                        <input type="number" id="voucherStock" class="input" placeholder="الكمية">
+                        <input type="text" id="voucherTitle" class="admin-input" placeholder="عنوان القسيمة">
+                        <input type="number" id="voucherDiamonds" class="admin-input" placeholder="عدد الجواهر">
+                        <input type="number" id="voucherPrice" class="admin-input" placeholder="السعر">
+                        <input type="number" id="voucherStock" class="admin-input" placeholder="الكمية">
                     </div>
-                    <button class="btn primary" onclick="addVoucher()">إضافة قسيمة</button>
+                    <button class="btn btn-primary" onclick="addVoucher()" style="margin-top: 1rem;">
+                        إضافة قسيمة
+                    </button>
                 </div>
                 
                 <div class="admin-card">
                     <h3>القسائم الحالية</h3>
-                    <div id="vouchersList"></div>
+                    <div id="vouchersListAdmin">
+                        <!-- القسائم -->
+                    </div>
                 </div>
             </section>
 
             <!-- قسم المتابعين -->
-            <section id="followersTab" class="admin-tab">
+            <section id="followersSection" class="admin-section">
                 <h2 class="section-title">
                     <i class="fas fa-users"></i> طلبات المتابعين
                 </h2>
                 
                 <div class="admin-card">
-                    <h3>إضافة باقة متابعين</h3>
-                    <div class="form-grid">
-                        <input type="number" id="followersCount" class="input" placeholder="عدد المتابعين">
-                        <select id="followersPlatform" class="input">
-                            <option value="instagram">انستغرام</option>
-                            <option value="facebook">فيسبوك</option>
-                            <option value="tiktok">تيك توك</option>
-                        </select>
-                        <input type="number" id="followersPrice" class="input" placeholder="السعر">
-                        <input type="number" id="followersStock" class="input" placeholder="الكمية">
-                    </div>
-                    <button class="btn primary" onclick="addFollowersPackage()">إضافة باقة</button>
-                </div>
-                
-                <div class="admin-card">
                     <h3>طلبات المتابعين المعلقة</h3>
-                    <div id="followersOrders"></div>
+                    <div id="followersOrders">
+                        <!-- طلبات المتابعين -->
+                    </div>
                 </div>
             </section>
 
             <!-- قسم الإعدادات -->
-            <section id="settingsTab" class="admin-tab">
+            <section id="settingsSection" class="admin-section">
                 <h2 class="section-title">
                     <i class="fas fa-cog"></i> إعدادات المتجر
                 </h2>
                 
-                <div class="settings-grid">
-                    <div class="setting-card">
+                <div class="form-grid">
+                    <div class="admin-card">
                         <h3><i class="fas fa-lock"></i> الأمان</h3>
-                        <div class="form-group">
-                            <label>كلمة مرور الأدمن الجديدة:</label>
-                            <input type="password" id="newAdminPassword" class="input">
-                        </div>
-                        <button class="btn primary" onclick="changeAdminPassword()">تغيير كلمة المرور</button>
+                        <input type="password" id="adminNewPassword" class="admin-input" placeholder="كلمة مرور جديدة">
+                        <button class="btn btn-primary" onclick="changeAdminPassword()" style="margin-top: 1rem;">
+                            تغيير كلمة المرور
+                        </button>
                     </div>
                     
-                    <div class="setting-card">
+                    <div class="admin-card">
                         <h3><i class="fas fa-ad"></i> إعلانات A-ads</h3>
-                        <div class="form-group">
-                            <label>كود A-ads:</label>
-                            <textarea id="aadsCode" class="input" rows="4" placeholder="أدخل كود الإعلان هنا"></textarea>
-                        </div>
-                        <button class="btn primary">حفظ</button>
+                        <textarea id="aadsCode" class="admin-input" rows="4" placeholder="كود A-ads"></textarea>
+                        <button class="btn btn-primary" style="margin-top: 1rem;">
+                            حفظ الإعدادات
+                        </button>
                     </div>
                     
-                    <div class="setting-card">
+                    <div class="admin-card">
                         <h3><i class="fas fa-wallet"></i> NowPayments</h3>
-                        <div class="form-group">
-                            <label>مفتاح API:</label>
-                            <input type="text" id="nowpaymentsApiKey" class="input" placeholder="أدخل مفتاح NowPayments">
-                        </div>
-                        <button class="btn primary">حفظ</button>
+                        <input type="text" id="nowpaymentsApiKey" class="admin-input" placeholder="مفتاح API">
+                        <button class="btn btn-primary" style="margin-top: 1rem;">
+                            ربط الدفع
+                        </button>
                     </div>
                 </div>
             </section>
@@ -351,4 +498,4 @@
         }
     </script>
 </body>
-                    </html>
+    </html>
