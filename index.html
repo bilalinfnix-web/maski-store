@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAS Ki stor | متجر إلكتروني متكامل</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- شريط التنعل -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <!-- الشعار -->
+            <div class="logo">
+                <div class="logo-icon">🎮</div>
+                <h1>MAS <span class="highlight">Ki</span> stor</h1>
+            </div>
+
+            <!-- القوائم -->
+            <div class="nav-links">
+                <a href="#home" class="nav-link active" data-section="home">
+                    <i class="fas fa-home"></i> الرئيسية
+                </a>
+                <a href="#accounts" class="nav-link" data-section="accounts">
+                    <i class="fas fa-gamepad"></i> حسابات فري فاير
+                </a>
+                <a href="#vouchers" class="nav-link" data-section="vouchers">
+                    <i class="fas fa-gem"></i> قسائم جواهر
+                </a>
+                <a href="#followers" class="nav-link" data-section="followers">
+                    <i class="fas fa-users"></i> متابعين
+                </a>
+            </div>
+
+            <!-- زر الأدمن -->
+            <button class="admin-btn" onclick="showAdminLogin()">
+                <i class="fas fa-user-shield"></i> لوحة الأدمن
+            </button>
+        </div>
+    </nav>
+
+    <!-- قسم إعلانات A-ads -->
+    <div class="a-ads-container">
+        <div class="container">
+            <div class="a-ads-placeholder" id="a-ads-placeholder">
+                <!-- سيتم تحميل إعلانات A-ads هنا -->
+                <p>إعلانات A-ads ستظهر هنا</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="main-content">
+        <!-- القسم 1: الرئيسية -->
+        <section id="home" class="section active">
+            <div class="hero">
+                <div class="hero-content">
+                    <h2 class="hero-title animate-pop">
+                        🚀 <span class="gradient-text">مرحبًا في MAS Ki stor</span>
+                    </h2>
+                    <p class="hero-subtitle">المتجر الإلكتروني الأفضل لشراء حسابات فري فاير، قسائم الجواهر وزيادة المتابعين</p>
+                    
+                    <div class="hero-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-shield-alt"></i>
+                            <h3>100% آمن</h3>
+                            <p>دفع آمن وموثوق</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-bolt"></i>
+                            <h3>تسليم فوري</h3>
+                            <p>بعد التأكيد مباشرة</p>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-headset"></i>
+                            <h3>دعم 24/7</h3>
+                            <p>دعم فني متواصل</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="https://cdn.pixabay.com/photo/2021/09/02/16/48/cryptocurrency-6592841_1280.png" alt="Free Fire">
+                </div>
+            </div>
+        </section>
+
+        <!-- القسم 2: حسابات فري فاير -->
+        <section id="accounts" class="section">
+            <div class="container">
+                <h2 class="section-title">
+                    <i class="fas fa-gamepad"></i> حسابات فري فاير
+                </h2>
+                <p class="section-subtitle">اختر من بين أفضل الحسابات بأسلحة نادرة ومستويات عالية</p>
+                
+                <div class="products-grid" id="accounts-grid">
+                    <!-- سيتم تحميل الحسابات من Supabase هنا -->
+                    <div class="loading">جاري تحميل الحسابات...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- القسم 3: قسائم جواهر -->
+        <section id="vouchers" class="section">
+            <div class="container">
+                <h2 class="section-title">
+                    <i class="fas fa-gem"></i> قسائم جواهر فري فاير
+                </h2>
+                <p class="section-subtitle">اشتر قسائم الجواهر بأسعار منافسة واستلمها فورًا</p>
+                
+                <div class="voucher-container">
+                    <div class="voucher-display" id="voucher-display">
+                        <div class="voucher-placeholder">
+                            <i class="fas fa-gift fa-3x"></i>
+                            <p>اختر قسيمة لرؤية التفاصيل</p>
+                        </div>
+                    </div>
+                    
+                    <div class="vouchers-grid" id="vouchers-grid">
+                        <!-- سيتم تحميل القسائم من Supabase هنا -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- القسم 4: متابعين -->
+        <section id="followers" class="section">
+            <div class="container">
+                <h2 class="section-title">
+                    <i class="fas fa-users"></i> متابعين وسائل التواصل
+                </h2>
+                <p class="section-subtitle">زد متابعيك على جميع المنصات الاجتماعية</p>
+                
+                <div class="followers-options">
+                    <div class="platform-selector">
+                        <h3>اختر المنصة:</h3>
+                        <div class="platforms">
+                            <button class="platform-btn active" data-platform="instagram">
+                                <i class="fab fa-instagram"></i> انستغرام
+                            </button>
+                            <button class="platform-btn" data-platform="facebook">
+                                <i class="fab fa-facebook"></i> فيسبوك
+                            </button>
+                            <button class="platform-btn" data-platform="tiktok">
+                                <i class="fab fa-tiktok"></i> تيك توك
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="followers-packages" id="followers-packages">
+                        <!-- سيتم تحميل باقات المتابعين من Supabase هنا -->
+                    </div>
+                    
+                    <div class="order-form hidden" id="order-form">
+                        <h3>أكمل طلبك</h3>
+                        <input type="text" id="profile-url" placeholder="رابط الحساب أو اليوزر">
+                        <div class="form-actions">
+                            <button class="btn-secondary" onclick="cancelOrder()">إلغاء</button>
+                            <button class="btn-primary" onclick="confirmOrder()">تأكيد الطلب</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- نافذة تسجيل دخول الأدمن -->
+    <div class="modal-overlay hidden" id="admin-modal">
+        <div class="modal animate-pop">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-shield"></i> دخول الأدمن</h2>
+                <button class="close-btn" onclick="hideAdminLogin()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="password" id="admin-password" placeholder="أدخل كلمة مرور الأدمن" class="input-field">
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="loginAdmin()">دخول</button>
+                    <button class="btn-secondary" onclick="hideAdminLogin()">إلغاء</button>
+                </div>
+                <p class="hint">كلمة المرور الافتراضية: Maski2026</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الدفع -->
+    <div class="modal-overlay hidden" id="payment-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🛒 اكمال الشراء</h2>
+                <button class="close-btn" onclick="hidePaymentModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="payment-content">
+                    <!-- سيتم تحميل محتوى الدفع هنا -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الفوتر -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>MAS Ki stor</h3>
+                    <p>متجر إلكتروني متكامل لخدمات الألعاب ووسائل التواصل الاجتماعي</p>
+                </div>
+                <div class="footer-section">
+                    <h3>التواصل</h3>
+                    <p>البريد: info@maskistore.com</p>
+                    <p>التليجرام: @maskistore</p>
+                </div>
+                <div class="footer-section">
+                    <h3>الدفع الآمن عبر</h3>
+                    <img src="https://nowpayments.io/images/nowpayments-brand/NowPayments_logo_black.svg" alt="NowPayments" class="payment-logo">
+                </div>
+            </div>
+            <p class="copyright">© 2024 MAS Ki stor. جميع الحقوق محفوظة</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="script.js"></script>
+    <!-- كود A-ads -->
+    <script type="text/javascript">
+        atOptions = {
+            'key' : 'your-a-ads-key',
+            'format' : 'iframe',
+            'height' : 60,
+            'width' : 468,
+            'params' : {}
+        };
+        document.write('<scr' + 'ipt type="text/javascript" src="http' + (location.protocol === 'https:' ? 's' : '') + '://www.profitabledisplaynetwork.com/your-a-ads-key/invoke.js"></scr' + 'ipt>');
+    </script>
+</body>
+</html>
