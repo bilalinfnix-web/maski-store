@@ -1,304 +1,5 @@
-// متغيرات إدارة الصور
+// حالة الأدمن
 let uploadedImages = [];
-let selectedProductId = null;
-
-// إدارة تبويبات الأدمن
-function showTab(tabName) {
-    // إخفاء جميع التبويبات
-    document.querySelectorAll('.admin-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // إزالة النشاط من الأزرار
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // إظهار التبويب المحدد
-    const tabElement = document.getElementById(tabName + 'Tab');
-    const btnElement = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
-    
-    if (tabElement) tabElement.classList.add('active');
-    if (btnElement) btnElement.classList.add('active');
-    
-    // تحميل بيانات التبويب
-    if (tabName === 'products') loadProducts();
-    else if (tabName === 'orders') loadOrders();
-    else if (tabName === 'vouchers') loadVouchers();
-    else if (tabName === 'followers') loadFollowersOrders();
-}
-
-// تحميل المنتجات
-async function loadProducts() {
-    try {
-        const { data: products, error } = await supabaseClient
-            .from('products')
-            .select('*')
-            .eq('category', 'accounts')
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        const container = document.getElementById('productsList');
-        if (!container) return;
-        
-        if (!products || products.length === 0) {
-            container.innerHTML = '<div class="loading">لا توجد منتجات</div>';
-            return;
-        }
-        
-        container.innerHTML = products.map(product => `
-            <div class="product-item">
-                <div class="product-header">
-                    <h4>${product.title}</h4>
-                    <span class="price">$${product.price}</span>
-                </div>
-                
-                ${product.images && product.images.length > 0 ? `
-                    <div class="product-images-grid">
-                        ${product.images.slice(0, 3).map((img, index) => `
-                            <div class="image-preview">
-                                <img src="${img}" alt="صورة ${index + 1}">
-                                ${index === 2 && product.images.length > 3 ? 
-                                    `<div class="image-counter">+${product.images.length - 3}</div>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-                
-                <div class="product-meta">
-                    <span><i class="fas fa-box"></i> ${product.stock || 0} متوفر</span>
-                    <span><i class="fas fa-gem"></i> ${product.diamonds || 0} جوهرة</span>
-                    <span><i class="fas fa-level-up-alt"></i> مستوى ${product.level || 1}</span>
-                </div>
-                
-                <div class="product-actions">
-                    <button class="btn small" onclick="editProduct('${product.id}')">
-                        <i class="fas fa-edit"></i> تعديل
-                    </button>
-                    <button class="btn small danger" onclick="deleteProduct('${product.id}')">
-                        <i class="fas fa-trash"></i> حذف
-                    </button>
-                </div>
-            </div>
-        `).join('');
-        
-    } catch (error) {
-        console.error('Error loading products:', error);
-        showError('حدث خطأ في تحميل المنتجات');
-    }
-}
-
-// رفع الصور
-function handleImageUpload(files) {
-    const maxImages = 7;
-    const preview = document.getElementById('imagesPreview');
-    
-    if (!preview) return;
-    
-    // حساب الصور المتاحة للرفع
-    const remainingSlots = maxImages - uploadedImages.length;
-    const filesToUpload = Array.from(files).slice(0, remainingSlots);
-    
-    if (filesToUpload.length === 0) {
-        alert(`لقد وصلت للحد الأقصى (${maxImages} صور)`);
-        return;
-    }
-    
-    // عرض معاينة للصور
-    filesToUpload.forEach((file, index) => {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const imageData = {
-                id: Date.now() + index,
-                file: file,
-                url: e.target.result
-            };
-            
-            uploadedImages.push(imageData);
-            renderImagePreview(imageData);
-        };
-        
-        reader.readAsDataURL(file);
-    });
-    
-    // تحديث العداد
-    updateImageCounter();
-}
-
-// عرض معاينة الصور
-function renderImagePreview(imageData) {
-    const preview = document.getElementById('imagesPreview');
-    if (!preview) return;
-    
-    const imageElement = document.createElement('div');
-    imageElement.className = 'image-preview';
-    imageElement.innerHTML = `
-        <img src="${imageData.url}" alt="صورة ${uploadedImages.length}">
-        <button class="remove-image" onclick="removeImage(${imageData.id})">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    preview.appendChild(imageElement);
-}
-
-// حذف صورة
-function removeImage(imageId) {
-    uploadedImages = uploadedImages.filter(img => img.id !== imageId);
-    
-    // إعادة عرض المعاينة
-    const preview = document.getElementById('imagesPreview');
-    if (preview) {
-        preview.innerHTML = '';
-        uploadedImages.forEach(renderImagePreview);
-    }
-    
-    updateImageCounter();
-}
-
-// تحديث عداد الصور
-function updateImageCounter() {
-    const counter = document.querySelector('.image-counter');
-    if (counter) {
-        counter.textContent = `${uploadedImages.length}/7`;
-    }
-}
-
-// إضافة منتج جديد
-async function addProduct() {
-    try {
-        const title = document.getElementById('productTitle').value.trim();
-        const price = parseFloat(document.getElementById('productPrice').value);
-        const stock = parseInt(document.getElementById('productStock').value);
-        const level = parseInt(document.getElementById('productLevel').value);
-        const diamonds = parseInt(document.getElementById('productDiamonds').value);
-        const skins = parseInt(document.getElementById('productSkins').value);
-        const description = document.getElementById('productDescription').value.trim();
-        
-        // التحقق من الحقول المطلوبة
-        if (!title || !price || isNaN(price) || price <= 0) {
-            showError('الرجاء إدخال عنوان المنتج وسعر صحيح');
-            return;
-        }
-        
-        // رفع الصور إلى Supabase Storage
-        const imageUrls = [];
-        for (const imageData of uploadedImages) {
-            const url = await supabaseUtils.uploadImage(imageData.file, 'product_' + Date.now());
-            if (url) imageUrls.push(url);
-        }
-        
-        // حفظ المنتج في قاعدة البيانات
-        const { data, error } = await supabaseClient
-            .from('products')
-            .insert([{
-                title: title,
-                description: description,
-                price: price,
-                stock: stock || 1,
-                level: level || 1,
-                diamonds: diamonds || 0,
-                skins: skins || 0,
-                images: imageUrls,
-                category: 'accounts',
-                is_active: true,
-                created_at: new Date().toISOString()
-            }])
-            .select()
-            .single();
-        
-        if (error) throw error;
-        
-        // إعادة تعيين النموذج
-        resetProductForm();
-        
-        // إعادة تحميل القائمة
-        loadProducts();
-        
-        showSuccess('تم إضافة المنتج بنجاح!');
-        
-    } catch (error) {
-        console.error('Error adding product:', error);
-        showError('حدث خطأ في إضافة المنتج');
-    }
-}
-
-// إعادة تعيين نموذج المنتج
-function resetProductForm() {
-    document.getElementById('productTitle').value = '';
-    document.getElementById('productPrice').value = '';
-    document.getElementById('productStock').value = '';
-    document.getElementById('productLevel').value = '';
-    document.getElementById('productDiamonds').value = '';
-    document.getElementById('productSkins').value = '';
-    document.getElementById('productDescription').value = '';
-    
-    uploadedImages = [];
-    const preview = document.getElementById('imagesPreview');
-    if (preview) preview.innerHTML = '';
-}
-
-// تحميل الطلبات
-async function loadOrders() {
-    try {
-        const { data: orders, error } = await supabaseClient
-            .from('orders')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
-        
-        if (error) throw error;
-        
-        const tbody = document.getElementById('ordersTable');
-        if (!tbody) return;
-        
-        if (!orders || orders.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">لا توجد طلبات</td></tr>';
-            return;
-        }
-        
-        tbody.innerHTML = orders.map(order => `
-            <tr>
-                <td><code>${order.order_id}</code></td>
-                <td>${order.product_name}</td>
-                <td>$${order.amount}</td>
-                <td>
-                    <span class="status-badge ${order.status}">
-                        ${getStatusText(order.status)}
-                    </span>
-                </td>
-                <td>${new Date(order.created_at).toLocaleDateString('ar-SA')}</td>
-                <td>
-                    <button class="btn small" onclick="viewOrderDetails('${order.order_id}')">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${order.status === 'pending' ? `
-                        <button class="btn small success" onclick="completeOrder('${order.order_id}')">
-                            <i class="fas fa-check"></i>
-                        </button>
-                    ` : ''}
-                </td>
-            </tr>
-        `).join('');
-        
-    } catch (error) {
-        console.error('Error loading orders:', error);
-        showError('حدث خطأ في تحميل الطلبات');
-    }
-}
-
-// الحصول على نص الحالة
-function getStatusText(status) {
-    const statusMap = {
-        'pending': 'قيد الانتظار',
-        'processing': 'قيد المعالجة',
-        'completed': 'مكتمل',
-        'failed': 'فاشل'
-    };
-    return statusMap[status] || status;
-}
 
 // تحميل الإحصائيات
 async function loadStats() {
@@ -310,18 +11,17 @@ async function loadStats() {
             .eq('status', 'completed');
         
         if (!salesError && sales) {
-            const totalSales = sales.reduce((sum, order) => sum + (order.amount || 0), 0);
-            document.getElementById('totalSales').textContent = `$${totalSales.toFixed(2)}`;
+            const total = sales.reduce((sum, order) => sum + (parseFloat(order.amount) || 0), 0);
+            document.getElementById('totalSales').textContent = `$${total.toFixed(2)}`;
         }
         
-        // الطلبات النشطة
-        const { data: activeOrders, error: ordersError } = await supabaseClient
+        // إجمالي الطلبات
+        const { data: orders, error: ordersError } = await supabaseClient
             .from('orders')
-            .select('id')
-            .eq('status', 'pending');
+            .select('id');
         
-        if (!ordersError && activeOrders) {
-            document.getElementById('activeOrders').textContent = activeOrders.length;
+        if (!ordersError && orders) {
+            document.getElementById('totalOrders').textContent = orders.length;
         }
         
         // إجمالي المنتجات
@@ -338,37 +38,408 @@ async function loadStats() {
             .from('orders')
             .select('id')
             .eq('product_type', 'followers')
-            .eq('status', 'processing');
+            .eq('status', 'pending');
         
         if (!followersError && followers) {
-            document.getElementById('pendingFollowers').textContent = followers.length;
+            document.getElementById('totalFollowers').textContent = followers.length;
         }
         
     } catch (error) {
-        console.error('Error loading stats:', error);
+        console.error('خطأ في تحميل الإحصائيات:', error);
     }
 }
 
-// إضافة قسيمة جديدة
+// إظهار التبويب
+function showTab(tabName) {
+    // إخفاء جميع الأقسام
+    document.querySelectorAll('.admin-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // إزالة النشاط من الأزرار
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // إظهار القسم المطلوب
+    const section = document.getElementById(tabName + 'Section');
+    const button = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
+    
+    if (section) section.classList.add('active');
+    if (button) button.classList.add('active');
+    
+    // تحميل بيانات التبويب
+    if (tabName === 'products') {
+        loadProducts();
+    } else if (tabName === 'orders') {
+        loadOrders();
+    } else if (tabName === 'vouchers') {
+        loadVouchersAdmin();
+    } else if (tabName === 'followers') {
+        loadFollowersOrdersAdmin();
+    }
+}
+
+// رفع الصور
+function handleImageUpload(files) {
+    const maxImages = 7;
+    const preview = document.getElementById('imagesPreview');
+    
+    if (!preview) return;
+    
+    // حساب المساحة المتاحة
+    const remaining = maxImages - uploadedImages.length;
+    const filesToUpload = Array.from(files).slice(0, remaining);
+    
+    if (filesToUpload.length === 0) {
+        alert(`لقد وصلت للحد الأقصى (${maxImages} صور)`);
+        return;
+    }
+    
+    // معالجة كل صورة
+    filesToUpload.forEach((file, index) => {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const imageData = {
+                id: Date.now() + index,
+                file: file,
+                url: e.target.result
+            };
+            
+            uploadedImages.push(imageData);
+            renderImagePreview(imageData);
+        };
+        
+        reader.readAsDataURL(file);
+    });
+}
+
+// عرض معاينة الصور
+function renderImagePreview(imageData) {
+    const preview = document.getElementById('imagesPreview');
+    if (!preview) return;
+    
+    const div = document.createElement('div');
+    div.className = 'image-preview';
+    div.innerHTML = `
+        <img src="${imageData.url}" alt="صورة">
+        <button class="remove-image" onclick="removeImage(${imageData.id})">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    preview.appendChild(div);
+}
+
+// حذف صورة
+function removeImage(imageId) {
+    uploadedImages = uploadedImages.filter(img => img.id !== imageId);
+    
+    // إعادة عرض المعاينة
+    const preview = document.getElementById('imagesPreview');
+    if (preview) {
+        preview.innerHTML = '';
+        uploadedImages.forEach(img => renderImagePreview(img));
+    }
+}
+
+// إضافة منتج
+async function addProduct() {
+    try {
+        // جمع البيانات
+        const title = document.getElementById('productTitle').value.trim();
+        const price = parseFloat(document.getElementById('productPrice').value);
+        const stock = parseInt(document.getElementById('productStock').value) || 1;
+        const category = document.getElementById('productCategory').value;
+        const platform = document.getElementById('productPlatform').value;
+        const level = parseInt(document.getElementById('productLevel').value) || 1;
+        const diamonds = parseInt(document.getElementById('productDiamonds').value) || 0;
+        const skins = parseInt(document.getElementById('productSkins').value) || 0;
+        const description = document.getElementById('productDescription').value.trim();
+        
+        // التحقق
+        if (!title || isNaN(price) || price <= 0) {
+            alert('الرجاء إدخال عنوان وسعر صحيحين');
+            return;
+        }
+        
+        // رفع الصور
+        const imageUrls = [];
+        if (uploadedImages.length > 0) {
+            for (const imgData of uploadedImages) {
+                const url = await supabaseUtils.uploadImage(imgData.file);
+                if (url) imageUrls.push(url);
+            }
+        }
+        
+        // بيانات المنتج
+        const productData = {
+            title: title,
+            description: description || 'لا يوجد وصف',
+            price: price,
+            stock: stock,
+            category: category,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        // حقول إضافية حسب التصنيف
+        if (category === 'accounts') {
+            productData.level = level;
+            productData.diamonds = diamonds;
+            productData.skins = skins;
+        } else if (category === 'vouchers') {
+            productData.diamonds = diamonds;
+        } else if (category === 'followers') {
+            productData.platform = platform;
+            productData.followers_count = diamonds; // استخدام حقل الجواهر للعدد
+        }
+        
+        // إضافة الصور
+        if (imageUrls.length > 0) {
+            productData.images = imageUrls;
+        }
+        
+        console.log('بيانات المنتج:', productData);
+        
+        // إرسال البيانات
+        const { data, error } = await supabaseClient
+            .from('products')
+            .insert([productData])
+            .select()
+            .single();
+        
+        if (error) {
+            throw new Error(`خطأ في الإضافة: ${error.message}`);
+        }
+        
+        alert('✅ تم إضافة المنتج بنجاح!');
+        
+        // تنظيف النموذج
+        resetProductForm();
+        
+        // إعادة تحميل القائمة
+        loadProducts();
+        
+    } catch (error) {
+        console.error('خطأ في إضافة المنتج:', error);
+        alert(`❌ فشل إضافة المنتج: ${error.message}`);
+    }
+}
+
+// تنظيف النموذج
+function resetProductForm() {
+    document.getElementById('productTitle').value = '';
+    document.getElementById('productPrice').value = '';
+    document.getElementById('productStock').value = '';
+    document.getElementById('productLevel').value = '';
+    document.getElementById('productDiamonds').value = '';
+    document.getElementById('productSkins').value = '';
+    document.getElementById('productDescription').value = '';
+    document.getElementById('productCategory').value = 'accounts';
+    document.getElementById('productPlatform').value = '';
+    
+    uploadedImages = [];
+    const preview = document.getElementById('imagesPreview');
+    if (preview) preview.innerHTML = '';
+}
+
+// تحميل المنتجات
+async function loadProducts() {
+    try {
+        const { data: products, error } = await supabaseClient
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        const container = document.getElementById('productsList');
+        if (!container) return;
+        
+        if (error) {
+            container.innerHTML = '<div class="loading">خطأ في تحميل المنتجات</div>';
+            return;
+        }
+        
+        if (!products || products.length === 0) {
+            container.innerHTML = '<div class="loading">لا توجد منتجات</div>';
+            return;
+        }
+        
+        container.innerHTML = products.map(product => `
+            <div class="product-item">
+                <div class="product-header">
+                    <h4>${product.title}</h4>
+                    <span class="product-price">$${product.price}</span>
+                </div>
+                
+                <div class="product-info">
+                    <p>${product.description || 'لا يوجد وصف'}</p>
+                    <div class="product-meta">
+                        <span><i class="fas fa-box"></i> ${product.stock} متوفر</span>
+                        <span><i class="fas fa-tag"></i> ${product.category}</span>
+                        ${product.is_active ? '<span style="color: #10b981;"><i class="fas fa-check-circle"></i> نشط</span>' : 
+                         '<span style="color: #ef4444;"><i class="fas fa-times-circle"></i> غير نشط</span>'}
+                    </div>
+                </div>
+                
+                <div class="product-actions">
+                    <button class="btn btn-secondary admin-btn-small" onclick="toggleProductStatus('${product.id}', ${product.is_active})">
+                        ${product.is_active ? 'تعطيل' : 'تفعيل'}
+                    </button>
+                    <button class="btn admin-btn-danger admin-btn-small" onclick="deleteProduct('${product.id}')">
+                        <i class="fas fa-trash"></i> حذف
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('خطأ في تحميل المنتجات:', error);
+        const container = document.getElementById('productsList');
+        if (container) {
+            container.innerHTML = '<div class="loading">خطأ في تحميل المنتجات</div>';
+        }
+    }
+}
+
+// تبديل حالة المنتج
+async function toggleProductStatus(productId, currentStatus) {
+    try {
+        const { error } = await supabaseClient
+            .from('products')
+            .update({ is_active: !currentStatus })
+            .eq('id', productId);
+        
+        if (error) throw error;
+        
+        alert(`✅ تم ${!currentStatus ? 'تفعيل' : 'تعطيل'} المنتج`);
+        loadProducts();
+        
+    } catch (error) {
+        console.error('خطأ في تغيير الحالة:', error);
+        alert('❌ فشل تغيير الحالة');
+    }
+}
+
+// حذف منتج
+async function deleteProduct(productId) {
+    if (!confirm('هل أنت متأكد من حذف هذا المنتج؟')) return;
+    
+    try {
+        const { error } = await supabaseClient
+            .from('products')
+            .delete()
+            .eq('id', productId);
+        
+        if (error) throw error;
+        
+        alert('✅ تم حذف المنتج');
+        loadProducts();
+        
+    } catch (error) {
+        console.error('خطأ في حذف المنتج:', error);
+        alert('❌ فشل حذف المنتج');
+    }
+}
+
+// تحميل الطلبات
+async function loadOrders() {
+    try {
+        const { data: orders, error } = await supabaseClient
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        const tbody = document.getElementById('ordersTable');
+        if (!tbody) return;
+        
+        if (error) {
+            tbody.innerHTML = '<tr><td colspan="6">خطأ في تحميل الطلبات</td></tr>';
+            return;
+        }
+        
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">لا توجد طلبات</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td><code>${order.order_id}</code></td>
+                <td>${order.product_name}</td>
+                <td>$${order.amount}</td>
+                <td>
+                    <span class="status-badge status-${order.status}">
+                        ${getStatusText(order.status)}
+                    </span>
+                </td>
+                <td>${new Date(order.created_at).toLocaleDateString('ar-SA')}</td>
+                <td>
+                    ${order.status === 'pending' ? `
+                        <button class="btn admin-btn-small admin-btn-success" onclick="completeOrder('${order.id}')">
+                            إكمال
+                        </button>
+                    ` : ''}
+                </td>
+            </tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('خطأ في تحميل الطلبات:', error);
+    }
+}
+
+// نص الحالة
+function getStatusText(status) {
+    const statuses = {
+        'pending': 'قيد الانتظار',
+        'completed': 'مكتمل',
+        'failed': 'فاشل'
+    };
+    return statuses[status] || status;
+}
+
+// إكمال طلب
+async function completeOrder(orderId) {
+    try {
+        const { error } = await supabaseClient
+            .from('orders')
+            .update({ status: 'completed' })
+            .eq('id', orderId);
+        
+        if (error) throw error;
+        
+        alert('✅ تم إكمال الطلب');
+        loadOrders();
+        
+    } catch (error) {
+        console.error('خطأ في إكمال الطلب:', error);
+        alert('❌ فشل إكمال الطلب');
+    }
+}
+
+// إضافة قسيمة
 async function addVoucher() {
     try {
         const title = document.getElementById('voucherTitle').value.trim();
         const diamonds = parseInt(document.getElementById('voucherDiamonds').value);
         const price = parseFloat(document.getElementById('voucherPrice').value);
-        const stock = parseInt(document.getElementById('voucherStock').value);
+        const stock = parseInt(document.getElementById('voucherStock').value) || 100;
         
         if (!title || !diamonds || !price) {
-            showError('الرجاء ملء جميع الحقول المطلوبة');
+            alert('الرجاء ملء جميع الحقول');
             return;
         }
         
         const { error } = await supabaseClient
             .from('products')
             .insert([{
-                title: `${title} - ${diamonds} جوهرة`,
+                title: title,
                 description: `قسيمة ${diamonds} جوهرة فري فاير`,
                 price: price,
-                stock: stock || 100,
+                stock: stock,
                 diamonds: diamonds,
                 category: 'vouchers',
                 is_active: true,
@@ -377,23 +448,24 @@ async function addVoucher() {
         
         if (error) throw error;
         
-        // إعادة تعيين النموذج
+        alert('✅ تم إضافة القسيمة');
+        
+        // تنظيف النموذج
         document.getElementById('voucherTitle').value = '';
         document.getElementById('voucherDiamonds').value = '';
         document.getElementById('voucherPrice').value = '';
         document.getElementById('voucherStock').value = '';
         
-        showSuccess('تم إضافة القسيمة بنجاح!');
-        loadVouchers();
+        loadVouchersAdmin();
         
     } catch (error) {
-        console.error('Error adding voucher:', error);
-        showError('حدث خطأ في إضافة القسيمة');
+        console.error('خطأ في إضافة القسيمة:', error);
+        alert('❌ فشل إضافة القسيمة');
     }
 }
 
-// تحميل القسائم
-async function loadVouchers() {
+// تحميل القسائم للأدمن
+async function loadVouchersAdmin() {
     try {
         const { data: vouchers, error } = await supabaseClient
             .from('products')
@@ -401,10 +473,13 @@ async function loadVouchers() {
             .eq('category', 'vouchers')
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
-        
-        const container = document.getElementById('vouchersList');
+        const container = document.getElementById('vouchersListAdmin');
         if (!container) return;
+        
+        if (error) {
+            container.innerHTML = '<div class="loading">خطأ في تحميل القسائم</div>';
+            return;
+        }
         
         if (!vouchers || vouchers.length === 0) {
             container.innerHTML = '<div class="loading">لا توجد قسائم</div>';
@@ -412,72 +487,25 @@ async function loadVouchers() {
         }
         
         container.innerHTML = vouchers.map(voucher => `
-            <div class="voucher-item">
-                <h4>${voucher.title}</h4>
-                <p><i class="fas fa-gem"></i> ${voucher.diamonds} جوهرة</p>
-                <div class="price">$${voucher.price}</div>
-                <div class="stock">المخزون: ${voucher.stock}</div>
-                <button class="btn small danger" onclick="deleteProduct('${voucher.id}')">
-                    <i class="fas fa-trash"></i> حذف
+            <div class="product-item">
+                <div class="product-header">
+                    <h4>${voucher.title}</h4>
+                    <span>$${voucher.price}</span>
+                </div>
+                <p>${voucher.diamonds} جوهرة - المخزون: ${voucher.stock}</p>
+                <button class="btn admin-btn-danger admin-btn-small" onclick="deleteProduct('${voucher.id}')">
+                    حذف
                 </button>
             </div>
         `).join('');
         
     } catch (error) {
-        console.error('Error loading vouchers:', error);
-    }
-}
-
-// إضافة باقة متابعين
-async function addFollowersPackage() {
-    try {
-        const count = parseInt(document.getElementById('followersCount').value);
-        const platform = document.getElementById('followersPlatform').value;
-        const price = parseFloat(document.getElementById('followersPrice').value);
-        const stock = parseInt(document.getElementById('followersStock').value);
-        
-        if (!count || !price) {
-            showError('الرجاء إدخال عدد المتابعين والسعر');
-            return;
-        }
-        
-        const platformNames = {
-            instagram: 'انستغرام',
-            facebook: 'فيسبوك',
-            tiktok: 'تيك توك'
-        };
-        
-        const { error } = await supabaseClient
-            .from('products')
-            .insert([{
-                title: `${count} متابع على ${platformNames[platform]}`,
-                description: `زيادة ${count} متابع على ${platformNames[platform]}`,
-                price: price,
-                stock: stock || 100,
-                followers_count: count,
-                platform: platform,
-                category: 'followers',
-                is_active: true,
-                created_at: new Date().toISOString()
-            }]);
-        
-        if (error) throw error;
-        
-        // إعادة تعيين النموذج
-        document.getElementById('followersCount').value = '';
-        document.getElementById('followersPrice').value = '';
-        document.getElementById('followersStock').value = '';
-        
-        showSuccess('تم إضافة الباقة بنجاح!');
-        
-    } catch (error) {
-        console.error('Error adding followers package:', error);
-        showError('حدث خطأ في إضافة الباقة');
+        console.error('خطأ في تحميل القسائم:', error);
     }
 }
 
 // تحميل طلبات المتابعين
-async function loadFollowersOrders() {
+async function loadFollowersOrdersAdmin() {
     try {
         const { data: orders, error } = await supabaseClient
             .from('orders')
@@ -485,10 +513,13 @@ async function loadFollowersOrders() {
             .eq('product_type', 'followers')
             .order('created_at', { ascending: false });
         
-        if (error) throw error;
-        
         const container = document.getElementById('followersOrders');
         if (!container) return;
+        
+        if (error) {
+            container.innerHTML = '<div class="loading">خطأ في تحميل الطلبات</div>';
+            return;
+        }
         
         if (!orders || orders.length === 0) {
             container.innerHTML = '<div class="loading">لا توجد طلبات</div>';
@@ -496,199 +527,51 @@ async function loadFollowersOrders() {
         }
         
         container.innerHTML = orders.map(order => `
-            <div class="order-item">
-                <div class="order-header">
+            <div class="product-item">
+                <div class="product-header">
                     <h4>${order.product_name}</h4>
-                    <span class="status ${order.status}">${getStatusText(order.status)}</span>
+                    <span class="status-badge status-${order.status}">
+                        ${getStatusText(order.status)}
+                    </span>
                 </div>
-                <div class="order-details">
-                    ${order.profile_url ? `<p><strong>الحساب:</strong> ${order.profile_url}</p>` : ''}
-                    ${order.platform ? `<p><strong>المنصة:</strong> ${order.platform}</p>` : ''}
-                    <p><strong>المبلغ:</strong> $${order.amount}</p>
-                    <p><strong>التاريخ:</strong> ${new Date(order.created_at).toLocaleString('ar-SA')}</p>
-                </div>
-                ${order.status === 'processing' ? `
-                    <div class="order-actions">
-                        <button class="btn small success" onclick="completeFollowersOrder('${order.order_id}')">
-                            <i class="fas fa-check"></i> تم التنفيذ
-                        </button>
-                    </div>
+                ${order.profile_url ? `<p><strong>الحساب:</strong> ${order.profile_url}</p>` : ''}
+                ${order.platform ? `<p><strong>المنصة:</strong> ${order.platform}</p>` : ''}
+                <p><strong>المبلغ:</strong> $${order.amount}</p>
+                ${order.status === 'pending' ? `
+                    <button class="btn admin-btn-small admin-btn-success" onclick="completeOrder('${order.id}')">
+                        تم التنفيذ
+                    </button>
                 ` : ''}
             </div>
         `).join('');
         
     } catch (error) {
-        console.error('Error loading followers orders:', error);
-        showError('حدث خطأ في تحميل الطلبات');
+        console.error('خطأ في تحميل طلبات المتابعين:', error);
     }
 }
 
-// تسجيل خروج الأدمن
+// تغيير كلمة مرور الأدمن
+function changeAdminPassword() {
+    const newPassword = document.getElementById('adminNewPassword').value.trim();
+    
+    if (newPassword.length < 6) {
+        alert('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+        return;
+    }
+    
+    localStorage.setItem('adminToken', newPassword);
+    document.getElementById('adminNewPassword').value = '';
+    alert('✅ تم تغيير كلمة المرور بنجاح!');
+}
+
+// تسجيل خروج
 function logoutAdmin() {
     localStorage.removeItem('adminToken');
     window.location.href = 'index.html';
 }
 
-// تغيير كلمة مرور الأدمن
-function changeAdminPassword() {
-    const newPassword = document.getElementById('newAdminPassword').value.trim();
-    
-    if (newPassword.length < 6) {
-        showError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-        return;
-    }
-    
-    localStorage.setItem('adminToken', newPassword);
-    document.getElementById('newAdminPassword').value = '';
-    showSuccess('تم تغيير كلمة المرور بنجاح!');
-}
-
-// عرض رسالة نجاح
-function showSuccess(message) {
-    alert(`✅ ${message}`);
-}
-
-// عرض رسالة خطأ
-function showError(message) {
-    alert(`❌ ${message}`);
-}
-
-// بدء التحميل
+// تهيئة لوحة التحكم
 document.addEventListener('DOMContentLoaded', function() {
     loadStats();
     loadProducts();
-    
-    // إضافة CSS للوحة التحكم
-    const style = document.createElement('style');
-    style.textContent = `
-        .admin-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-            border-bottom: 2px solid #374151;
-            padding-bottom: 1rem;
-        }
-        .tab-btn {
-            background: rgba(255,255,255,0.1);
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 10px;
-            color: #cbd5e1;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 500;
-        }
-        .tab-btn:hover {
-            background: rgba(255,255,255,0.2);
-        }
-        .tab-btn.active {
-            background: #4f46e5;
-            color: white;
-        }
-        .admin-tab {
-            display: none;
-        }
-        .admin-tab.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        .admin-card {
-            background: rgba(30, 41, 59, 0.8);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-        .products-list {
-            display: grid;
-            gap: 1rem;
-        }
-        .product-item {
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 12px;
-            padding: 1rem;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .product-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .product-meta {
-            display: flex;
-            gap: 1rem;
-            margin: 1rem 0;
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-        .product-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .btn.small {
-            padding: 0.25rem 0.75rem;
-            font-size: 0.8rem;
-        }
-        .btn.danger {
-            background: #ef4444;
-        }
-        .btn.success {
-            background: #10b981;
-        }
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        .status-badge.pending {
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
-        }
-        .status-badge.completed {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-        }
-        .status-badge.processing {
-            background: rgba(59, 130, 246, 0.2);
-            color: #3b82f6;
-        }
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .setting-card {
-            background: rgba(30, 41, 59, 0.8);
-            border-radius: 16px;
-            padding: 1.5rem;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .voucher-item {
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .order-item {
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-    `;
-    document.head.appendChild(style);
 });
