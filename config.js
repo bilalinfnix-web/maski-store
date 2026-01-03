@@ -1,6 +1,6 @@
 // إعدادات Supabase
-const SUPABASE_URL = 'https://your-project.supabase.co'; // استبدل برابط مشروعك
-const SUPABASE_ANON_KEY = 'your-anon-key'; // استبدل بمفتاحك
+const SUPABASE_URL = 'https://ftgjqvoiunulricuetmb.supabase.co'; // استبدل برابط مشروعك
+const SUPABASE_ANON_KEY = 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm'; // استبدل بمفتاحك
 
 // إعدادات NowPayments
 const NOWPAYMENTS_API_KEY = 'your-nowpayments-api-key'; // استبدل بمفتاح API
