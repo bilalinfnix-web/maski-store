@@ -1,110 +1,91 @@
 // إعدادات Supabase
-const SUPABASE_URL = 'https://ftgjqvoiunulricuetmb.supabase.co'; // استبدل برابط مشروعك
-const SUPABASE_ANON_KEY = 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm'; // استبدل بمفتاحك
-
-// إعدادات NowPayments
-const NOWPAYMENTS_API_KEY = 'your-nowpayments-api-key'; // استبدل بمفتاح API
-const NOWPAYMENTS_URL = 'https://api.nowpayments.io/v1';
+const SUPABASE_URL = 'https://ftgjqvoiunulricuetmb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm';
 
 // تهيئة Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// تصدير المتغيرات
-window.supabaseClient = supabase;
-window.nowpaymentsConfig = {
-    apiKey: NOWPAYMENTS_API_KEY,
-    apiUrl: NOWPAYMENTS_URL
-};
+// إعدادات NowPayments
+const NOWPAYMENTS_API_KEY = 'your-api-key-here'; // ضعه لاحقًا
+const NOWPAYMENTS_URL = 'https://api.nowpayments.io/v1';
 
-// دالة لتحميل الصور من Supabase Storage
+// دالة لتحميل الصور
 async function loadImageFromStorage(path) {
     try {
-        const { data, error } = await supabase.storage
+        const { data } = supabase.storage
             .from('product-images')
             .getPublicUrl(path);
-        
-        if (error) throw error;
-        return data.publicUrl;
+        return data?.publicUrl || null;
     } catch (error) {
-        console.error('Error loading image:', error);
-        return 'https://via.placeholder.com/300x200?text=MAS+Ki+stor';
+        console.log('خطأ في تحميل الصورة:', error);
+        return null;
     }
 }
 
-// دالة لرفع الصور إلى Supabase Storage
-async function uploadImageToStorage(file, productId) {
+// دالة لرفع الصور
+async function uploadImageToStorage(file) {
     try {
-        const fileName = `${productId}_${Date.now()}_${file.name}`;
-        const filePath = `products/${fileName}`;
+        if (!file) return null;
+        
+        const fileName = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const filePath = `${fileName}`;
         
         const { data, error } = await supabase.storage
             .from('product-images')
-            .upload(filePath, file);
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
         
-        if (error) throw error;
+        if (error) {
+            console.log('خطأ في رفع الصورة:', error);
+            
+            // محاولة باسم آخر
+            const newFileName = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            return uploadImageToStorage(file, newFileName);
+        }
         
-        // الحصول على رابط عام للصورة
         const { data: urlData } = supabase.storage
             .from('product-images')
             .getPublicUrl(filePath);
         
-        return urlData.publicUrl;
+        return urlData?.publicUrl || null;
     } catch (error) {
-        console.error('Error uploading image:', error);
+        console.log('خطأ غير متوقع في رفع الصورة:', error);
         return null;
     }
 }
 
-// دالة إنشاء فاتورة NowPayments
+// NowPayments وظائف
 async function createNowPaymentsInvoice(amount, productName, orderId) {
     try {
-        const response = await fetch(`${NOWPAYMENTS_URL}/invoice`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': NOWPAYMENTS_API_KEY
-            },
-            body: JSON.stringify({
-                price_amount: amount,
-                price_currency: 'usd',
-                order_id: orderId,
-                order_description: productName,
-                ipn_callback_url: 'https://your-domain.com/ipn-callback',
-                success_url: 'https://your-domain.com/success',
-                cancel_url: 'https://your-domain.com/cancel'
-            })
+        // سيتم تفعيل هذا لاحقًا
+        console.log('NowPayments Invoice Request:', {
+            amount,
+            productName,
+            orderId
         });
         
-        if (!response.ok) throw new Error('Failed to create invoice');
-        
-        const data = await response.json();
-        return data.invoice_url;
+        // رابط تجريبي للاختبار
+        return `https://nowpayments.io/payment/?amount=${amount}&description=${encodeURIComponent(productName)}&orderId=${orderId}`;
     } catch (error) {
-        console.error('Error creating NowPayments invoice:', error);
+        console.error('NowPayments Error:', error);
         return null;
     }
 }
 
-// دالة التحقق من حالة الدفع
 async function checkPaymentStatus(paymentId) {
     try {
-        const response = await fetch(`${NOWPAYMENTS_URL}/payment/${paymentId}`, {
-            headers: {
-                'x-api-key': NOWPAYMENTS_API_KEY
-            }
-        });
-        
-        if (!response.ok) throw new Error('Failed to check payment status');
-        
-        const data = await response.json();
-        return data.payment_status;
+        // محاكاة لحالة الدفع
+        return 'completed'; // أو 'pending', 'failed'
     } catch (error) {
-        console.error('Error checking payment status:', error);
+        console.error('Payment Status Error:', error);
         return 'failed';
     }
 }
 
-// تصدير الدوال
+// تصدير
+window.supabaseClient = supabase;
 window.supabaseUtils = {
     loadImage: loadImageFromStorage,
     uploadImage: uploadImageToStorage
