@@ -1,4 +1,4 @@
-// متغيرات عامة
+// متغيرات
 let uploadedImages = [];
 
 // تهيئة الصفحة
@@ -6,16 +6,37 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('لوحة التحكم جاهزة');
     loadStats();
     loadProducts();
+    loadOrders();
 });
 
 // تحميل الإحصائيات
 async function loadStats() {
     try {
-        // بسيط للإختبار
-        document.getElementById('totalSales').textContent = '$0';
-        document.getElementById('totalOrders').textContent = '0';
-        document.getElementById('totalProducts').textContent = '0';
-        document.getElementById('totalFollowers').textContent = '0';
+        // عدد المنتجات
+        const productsSnapshot = await firestoreDB.collection('products').get();
+        document.getElementById('totalProducts').textContent = productsSnapshot.size;
+        
+        // عدد الطلبات
+        const ordersSnapshot = await firestoreDB.collection('orders').get();
+        document.getElementById('totalOrders').textContent = ordersSnapshot.size;
+        
+        // إجمالي المبيعات
+        let totalSales = 0;
+        ordersSnapshot.forEach(doc => {
+            const order = doc.data();
+            if (order.status === 'completed') {
+                totalSales += parseFloat(order.amount) || 0;
+            }
+        });
+        document.getElementById('totalSales').textContent = `$${totalSales.toFixed(2)}`;
+        
+        // طلبات المتابعين
+        const followersQuery = await firestoreDB.collection('orders')
+            .where('productType', '==', 'followers')
+            .where('status', '==', 'pending')
+            .get();
+        document.getElementById('totalFollowers').textContent = followersQuery.size;
+        
     } catch (error) {
         console.log('خطأ في الإحصائيات:', error);
     }
@@ -33,10 +54,6 @@ function showTab(tabName) {
     
     if (section) section.classList.add('active');
     if (button) button.classList.add('active');
-    
-    // تحميل البيانات
-    if (tabName === 'products') loadProducts();
-    if (tabName === 'orders') loadOrders();
 }
 
 // معالجة رفع الصور
@@ -97,22 +114,21 @@ function removeImage(imageId) {
     });
 }
 
-// ✅ إضافة منتج - نسخة مبسطة تعمل 100%
+// ✅ إضافة منتج - تعمل 100%
 async function addProduct() {
     try {
         console.log('بدء إضافة منتج...');
         
         // الحصول على البيانات
         const title = document.getElementById('productTitle').value.trim();
-        const price = document.getElementById('productPrice').value;
+        const price = parseFloat(document.getElementById('productPrice').value);
+        const stock = parseInt(document.getElementById('productStock').value) || 10;
         const category = document.getElementById('productCategory').value;
         const description = document.getElementById('productDescription').value.trim() || 'لا يوجد وصف';
         
-        console.log('البيانات:', { title, price, category, description });
-        
         // تحقق بسيط
-        if (!title || !price) {
-            alert('⚠️ الرجاء إدخال العنوان والسعر');
+        if (!title || isNaN(price) || price <= 0) {
+            alert('⚠️ الرجاء إدخال عنوان وسعر صحيحين');
             return;
         }
         
@@ -126,92 +142,59 @@ async function addProduct() {
         const productData = {
             title: title,
             description: description,
-            price: parseFloat(price),
-            stock: parseInt(document.getElementById('productStock').value) || 1,
+            price: price,
+            stock: stock,
             category: category,
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
         
         // حقول إضافية حسب التصنيف
         if (category === 'accounts') {
             productData.level = parseInt(document.getElementById('productLevel').value) || 1;
-            productData.diamonds = parseInt(document.getElementById('productDiamonds').value) || 0;
-            productData.skins = parseInt(document.getElementById('productSkins').value) || 0;
+            productData.diamonds = parseInt(document.getElementById('productDiamonds').value) || 1000;
+            productData.skins = parseInt(document.getElementById('productSkins').value) || 5;
         } else if (category === 'vouchers') {
-            productData.diamonds = parseInt(document.getElementById('productDiamonds').value) || 100;
+            productData.diamonds = parseInt(document.getElementById('productDiamonds').value) || 1000;
         } else if (category === 'followers') {
             productData.platform = document.getElementById('productPlatform').value || 'instagram';
             productData.followers_count = parseInt(document.getElementById('productDiamonds').value) || 1000;
         }
         
-        console.log('بيانات المنتج المرسلة:', productData);
-        
-        // محاولة الإضافة مع fetch مباشرة (بدون supabase sdk)
-        const response = await fetch('https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/products', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify(productData)
-        });
-        
-        console.log('استجابة السيرفر:', response.status, response.statusText);
-        
-        if (response.ok) {
-            // نجاح
-            alert('✅ تم إضافة المنتج بنجاح!');
-            
-            // تنظيف النموذج
-            resetProductForm();
-            
-            // إعادة تحميل القائمة
-            setTimeout(() => {
-                loadProducts();
-                addBtn.innerHTML = originalText;
-                addBtn.disabled = false;
-            }, 1000);
-            
-        } else {
-            // فشل
-            const errorText = await response.text();
-            console.error('خطأ من السيرفر:', errorText);
-            
-            // محاولة بديلة باستخدام supabase sdk
-            console.log('محاولة باستخدام SDK...');
-            
-            const { data, error } = await supabaseClient
-                .from('products')
-                .insert([productData])
-                .select();
-            
-            if (error) {
-                throw new Error(`فشل الإضافة: ${error.message}`);
+        // رفع الصور
+        if (uploadedImages.length > 0) {
+            const imageUrls = [];
+            for (const img of uploadedImages) {
+                const url = await firebaseUtils.uploadImage(img.file);
+                if (url) imageUrls.push(url);
             }
-            
-            alert('✅ تم إضافة المنتج (المحاولة الثانية)');
-            resetProductForm();
-            loadProducts();
+            if (imageUrls.length > 0) {
+                productData.images = imageUrls;
+            }
         }
+        
+        console.log('بيانات المنتج:', productData);
+        
+        // إضافة المنتج إلى Firebase
+        const docRef = await firestoreDB.collection('products').add(productData);
+        
+        console.log('تم إضافة المنتج بنجاح:', docRef.id);
+        alert('✅ تم إضافة المنتج بنجاح!');
+        
+        // تنظيف النموذج
+        resetProductForm();
+        
+        // إعادة تحميل القائمة
+        setTimeout(() => {
+            loadProducts();
+            addBtn.innerHTML = originalText;
+            addBtn.disabled = false;
+        }, 1000);
         
     } catch (error) {
-        console.error('خطأ كامل:', error);
-        
-        let errorMessage = 'حدث خطأ في إضافة المنتج';
-        
-        if (error.message.includes('permission denied')) {
-            errorMessage = 'خطأ في الصلاحيات. تأكد من RLS Policies';
-        } else if (error.message.includes('network')) {
-            errorMessage = 'خطأ في الاتصال بالخادم';
-        } else if (error.message.includes('invalid')) {
-            errorMessage = 'بيانات غير صحيحة';
-        }
-        
-        alert(`❌ ${errorMessage}\n\nافتح Console (F12) للتفاصيل`);
+        console.error('خطأ في إضافة المنتج:', error);
+        alert(`❌ فشل إضافة المنتج: ${error.message}`);
         
         // إعادة تفعيل الزر
         const addBtn = document.querySelector('.btn-primary[onclick="addProduct()"]');
@@ -226,12 +209,13 @@ async function addProduct() {
 function resetProductForm() {
     document.getElementById('productTitle').value = '';
     document.getElementById('productPrice').value = '';
-    document.getElementById('productStock').value = '1';
+    document.getElementById('productStock').value = '10';
     document.getElementById('productLevel').value = '1';
-    document.getElementById('productDiamonds').value = '0';
-    document.getElementById('productSkins').value = '0';
+    document.getElementById('productDiamonds').value = '1000';
+    document.getElementById('productSkins').value = '5';
     document.getElementById('productDescription').value = '';
     document.getElementById('productCategory').value = 'accounts';
+    document.getElementById('productPlatform').value = 'instagram';
     
     // مسح الصور
     uploadedImages = [];
@@ -249,22 +233,21 @@ async function loadProducts() {
         
         container.innerHTML = '<div class="loading">جاري التحميل...</div>';
         
-        // محاولة باستخدام fetch مباشرة
-        const response = await fetch('https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/products?select=*&order=created_at.desc', {
-            headers: {
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm'
-            }
+        const snapshot = await firestoreDB.collection('products')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        const products = [];
+        snapshot.forEach(doc => {
+            products.push({
+                id: doc.id,
+                ...doc.data()
+            });
         });
         
-        if (!response.ok) {
-            throw new Error(`خطأ في التحميل: ${response.status}`);
-        }
+        console.log('المنتجات المحملة:', products.length);
         
-        const products = await response.json();
-        console.log('المنتجات المحملة:', products);
-        
-        if (!products || products.length === 0) {
+        if (products.length === 0) {
             container.innerHTML = '<div class="loading">لا توجد منتجات بعد</div>';
             return;
         }
@@ -279,16 +262,16 @@ async function loadProducts() {
                 <div class="product-meta">
                     <span><i class="fas fa-tag"></i> ${product.category}</span>
                     <span><i class="fas fa-box"></i> ${product.stock || 0}</span>
-                    <span style="color: ${product.is_active ? '#10b981' : '#ef4444'}">
-                        <i class="fas fa-${product.is_active ? 'check' : 'times'}-circle"></i>
-                        ${product.is_active ? 'نشط' : 'غير نشط'}
+                    <span style="color: ${product.isActive ? '#10b981' : '#ef4444'}">
+                        <i class="fas fa-${product.isActive ? 'check' : 'times'}-circle"></i>
+                        ${product.isActive ? 'نشط' : 'غير نشط'}
                     </span>
                 </div>
                 <div class="product-actions">
-                    <button class="btn btn-secondary admin-btn-small" onclick="toggleProduct('${product.id}', ${product.is_active})">
-                        ${product.is_active ? 'تعطيل' : 'تفعيل'}
+                    <button class="btn btn-secondary btn-small" onclick="toggleProduct('${product.id}', ${product.isActive})">
+                        ${product.isActive ? 'تعطيل' : 'تفعيل'}
                     </button>
-                    <button class="btn admin-btn-danger admin-btn-small" onclick="deleteProduct('${product.id}')">
+                    <button class="btn btn-danger btn-small" onclick="deleteProduct('${product.id}')">
                         حذف
                     </button>
                 </div>
@@ -299,7 +282,7 @@ async function loadProducts() {
         console.error('خطأ في تحميل المنتجات:', error);
         const container = document.getElementById('productsList');
         if (container) {
-            container.innerHTML = '<div class="loading">خطأ في التحميل. تأكد من اتصال الإنترنت</div>';
+            container.innerHTML = '<div class="loading">خطأ في التحميل</div>';
         }
     }
 }
@@ -309,23 +292,13 @@ async function toggleProduct(productId, isActive) {
     if (!confirm(`هل تريد ${isActive ? 'تعطيل' : 'تفعيل'} هذا المنتج؟`)) return;
     
     try {
-        const response = await fetch(`https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/products?id=eq.${productId}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ is_active: !isActive })
+        await firestoreDB.collection('products').doc(productId).update({
+            isActive: !isActive,
+            updatedAt: new Date().toISOString()
         });
         
-        if (response.ok) {
-            alert(`✅ تم ${isActive ? 'تعطيل' : 'تفعيل'} المنتج`);
-            loadProducts();
-        } else {
-            throw new Error('فشل التحديث');
-        }
+        alert(`✅ تم ${isActive ? 'تعطيل' : 'تفعيل'} المنتج`);
+        loadProducts();
         
     } catch (error) {
         console.error('خطأ في تغيير الحالة:', error);
@@ -335,27 +308,16 @@ async function toggleProduct(productId, isActive) {
 
 // حذف منتج
 async function deleteProduct(productId) {
-    if (!confirm('⚠️ هل أنت متأكد من حذف هذا المنتج؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+    if (!confirm('⚠️ هل أنت متأكد من حذف هذا المنتج؟')) return;
     
     try {
-        const response = await fetch(`https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/products?id=eq.${productId}`, {
-            method: 'DELETE',
-            headers: {
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Prefer': 'return=minimal'
-            }
-        });
+        await firestoreDB.collection('products').doc(productId).delete();
         
-        if (response.ok) {
-            alert('✅ تم حذف المنتج');
-            loadProducts();
-        } else {
-            throw new Error('فشل الحذف');
-        }
+        alert('✅ تم حذف المنتج');
+        loadProducts();
         
     } catch (error) {
-        console.error('خطأ في الحذف:', error);
+        console.error('خطأ في حذف المنتج:', error);
         alert('❌ فشل حذف المنتج');
     }
 }
@@ -368,35 +330,33 @@ async function loadOrders() {
         
         tbody.innerHTML = '<tr><td colspan="6">جاري التحميل...</td></tr>';
         
-        const response = await fetch('https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/orders?select=*&order=created_at.desc', {
-            headers: {
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm'
-            }
+        const snapshot = await firestoreDB.collection('orders')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        const orders = [];
+        snapshot.forEach(doc => {
+            orders.push({
+                id: doc.id,
+                ...doc.data()
+            });
         });
         
-        if (!response.ok) {
-            tbody.innerHTML = '<tr><td colspan="6">خطأ في التحميل</td></tr>';
-            return;
-        }
-        
-        const orders = await response.json();
-        
-        if (!orders || orders.length === 0) {
+        if (orders.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6">لا توجد طلبات</td></tr>';
             return;
         }
         
         tbody.innerHTML = orders.map(order => `
             <tr>
-                <td><code>${order.order_id || order.id}</code></td>
-                <td>${order.product_name || 'غير محدد'}</td>
+                <td><code>${order.orderId || order.id}</code></td>
+                <td>${order.productName || 'غير محدد'}</td>
                 <td>$${order.amount || 0}</td>
-                <td><span class="status-badge status-${order.status || 'pending'}">${order.status || 'قيد الانتظار'}</span></td>
-                <td>${new Date(order.created_at).toLocaleDateString('ar-SA')}</td>
+                <td><span class="status-badge status-${order.status || 'pending'}">${getStatusText(order.status)}</span></td>
+                <td>${new Date(order.createdAt).toLocaleDateString('ar-SA')}</td>
                 <td>
                     ${(order.status === 'pending' || !order.status) ? `
-                        <button class="btn admin-btn-small admin-btn-success" onclick="completeOrder('${order.id}')">
+                        <button class="btn btn-success btn-small" onclick="completeOrder('${order.id}')">
                             إكمال
                         </button>
                     ` : ''}
@@ -406,77 +366,37 @@ async function loadOrders() {
         
     } catch (error) {
         console.error('خطأ في تحميل الطلبات:', error);
+        const tbody = document.getElementById('ordersTable');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6">خطأ في التحميل</td></tr>';
+        }
     }
+}
+
+function getStatusText(status) {
+    const statuses = {
+        'pending': 'قيد الانتظار',
+        'completed': 'مكتمل',
+        'failed': 'فاشل'
+    };
+    return statuses[status] || status || 'قيد الانتظار';
 }
 
 // إكمال طلب
 async function completeOrder(orderId) {
     try {
-        const response = await fetch(`https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/orders?id=eq.${orderId}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ status: 'completed' })
+        await firestoreDB.collection('orders').doc(orderId).update({
+            status: 'completed',
+            updatedAt: new Date().toISOString()
         });
         
-        if (response.ok) {
-            alert('✅ تم إكمال الطلب');
-            loadOrders();
-        }
+        alert('✅ تم إكمال الطلب');
+        loadOrders();
+        loadStats();
         
     } catch (error) {
         console.error('خطأ في إكمال الطلب:', error);
         alert('❌ فشل إكمال الطلب');
-    }
-}
-
-// إضافة قسيمة
-async function addVoucher() {
-    try {
-        const title = document.getElementById('voucherTitle').value || 'قسيمة جديدة';
-        const diamonds = parseInt(document.getElementById('voucherDiamonds').value) || 1000;
-        const price = parseFloat(document.getElementById('voucherPrice').value) || 9.99;
-        const stock = parseInt(document.getElementById('voucherStock').value) || 100;
-        
-        const voucherData = {
-            title: `${diamonds} جوهرة`,
-            description: `قسيمة ${diamonds} جوهرة فري فاير`,
-            price: price,
-            stock: stock,
-            diamonds: diamonds,
-            category: 'vouchers',
-            is_active: true,
-            created_at: new Date().toISOString()
-        };
-        
-        const response = await fetch('https://ftgjqvoiunulricuetmb.supabase.co/rest/v1/products', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': 'sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Authorization': 'Bearer sb_publishable_X_GOb2cSy8ddfcHOSYCrzw_Bu7E-5Fm',
-                'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify(voucherData)
-        });
-        
-        if (response.ok) {
-            alert('✅ تم إضافة القسيمة');
-            document.getElementById('voucherTitle').value = '';
-            document.getElementById('voucherDiamonds').value = '';
-            document.getElementById('voucherPrice').value = '';
-            document.getElementById('voucherStock').value = '';
-            showTab('products');
-            loadProducts();
-        }
-        
-    } catch (error) {
-        console.error('خطأ في إضافة القسيمة:', error);
-        alert('❌ فشل إضافة القسيمة');
     }
 }
 
@@ -498,4 +418,4 @@ function changeAdminPassword() {
 function logoutAdmin() {
     localStorage.removeItem('adminToken');
     window.location.href = 'index.html';
-            }
+    }
